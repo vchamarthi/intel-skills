@@ -65,7 +65,7 @@ on:
         type: choice
         options: [anthropic, openai, nv_build, bedrock]
       evaluator_model:
-        description: "Judge model (SKILL_EVAL_LLM_MODEL). Empty = the environment variable SKILL_EVAL_LLM_MODEL, else SkillEvaluator's provider default."
+        description: "Judge model (SKILL_EVAL_LLM_MODEL); also the agents' default when agent_model is empty. Empty = the environment variable SKILL_EVAL_LLM_MODEL, else the provider default."
         required: false
         default: ""
         type: string
