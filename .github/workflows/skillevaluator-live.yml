@@ -93,8 +93,8 @@ env:
   SKILLEVALUATOR_COMMIT: 41e5469a229e82f97e4d3597d3422efa703fd4fe
   HARBOR_TELEMETRY: "off"
   # Harbor starts each trial with `docker compose up --wait`, and SkillEvaluator's
-  # trial images set HEALTHCHECK NONE. Compose before v5.2 (the runner's bundled v2.x
-  # included) fails --wait with "has no healthcheck configured"; v5.2+ accepts it.
+  # trial images set HEALTHCHECK NONE. Compose up to v5.0.1 (the runner's bundled v2.x
+  # included) fails --wait with "has no healthcheck configured"; v5.0.2+ accepts it.
   COMPOSE_VERSION: "5.5.1"
   COMPOSE_SHA256: db1889184726840f75c4f9c001048430d4f25b3be3cb084d3ddd762bc0aed576
 
