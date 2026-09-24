@@ -101,7 +101,7 @@ env:
   # no lockfiles for it to read.
   TIER1_CHECKS: schema,version,pii,license,code-integrity,unicode,quality,lint
   # SkillEvaluator's own default, written out so raising it is a visible one-line diff.
-  # The lowest skill in the catalog scores 72.5 today.
+  # At this pin the lowest-scoring skill in the catalog is at 72.5.
   MIN_QUALITY_SCORE: "70"
 
 jobs:
