@@ -92,6 +92,11 @@ env:
   # Same pin as skillevaluator.yml; bump the two together.
   SKILLEVALUATOR_COMMIT: 41e5469a229e82f97e4d3597d3422efa703fd4fe
   HARBOR_TELEMETRY: "off"
+  # Harbor starts each trial with `docker compose up --wait`, and SkillEvaluator's
+  # trial images set HEALTHCHECK NONE. Compose before v5.2 (the runner's bundled v2.x
+  # included) fails --wait with "has no healthcheck configured"; v5.2+ accepts it.
+  COMPOSE_VERSION: "5.5.1"
+  COMPOSE_SHA256: db1889184726840f75c4f9c001048430d4f25b3be3cb084d3ddd762bc0aed576
 
 jobs:
   live-eval:
@@ -126,6 +131,17 @@ jobs:
         uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           enable-cache: false
+
+      - name: Install Docker Compose
+        run: |
+          set -euo pipefail
+          dir="${HOME}/.docker/cli-plugins"
+          mkdir -p "$dir"
+          curl -fsSL --retry 3 -o "${dir}/docker-compose" \
+            "https://github.com/docker/compose/releases/download/v${COMPOSE_VERSION}/docker-compose-linux-x86_64"
+          echo "${COMPOSE_SHA256}  ${dir}/docker-compose" | sha256sum -c -
+          chmod +x "${dir}/docker-compose"
+          docker compose version
 
       - name: Install SkillEvaluator
         run: |
