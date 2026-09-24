@@ -206,6 +206,9 @@ jobs:
           set -euo pipefail
           args=(--agents "$AGENTS" --env-mode docker --n-attempts "$N_ATTEMPTS"
                 --results-dir results --progress plain
+                # Keep Harbor's job dirs under results/ so the uploaded artifact carries
+                # full trial and Docker build logs; the CLI summary truncates them.
+                --harbor-keep-jobs
                 --evaluated-source-repository "$REPO"
                 --evaluated-source-revision "$SHA")
           IFS=',' read -r -a models <<< "$AGENT_MODEL"
