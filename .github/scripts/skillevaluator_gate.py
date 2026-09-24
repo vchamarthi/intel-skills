@@ -185,93 +185,132 @@ def find_report(report_dir: Path) -> Path:
     return candidates[-1]
 
 
-def gate(
-    report: dict[str, Any], skill: str, skill_dir: Path, entries: list[Entry], min_score: float
-) -> Verdict:
-    verdict = Verdict()
-    scoped = [e for e in entries if in_scope(e, skill)]
+def gated_findings(result: dict[str, Any], legacy_errors: list[str]) -> list[dict[str, Any]]:
+    errors = set(legacy_errors)
+    return [f for f in result.get("findings") or [] if is_gated(f, errors)]
 
+
+def match_finding(scoped: list[Entry], check: str, path: str, message: str) -> Entry | None:
+    return next(
+        (
+            e
+            for e in scoped
+            if e.section == "findings"
+            and fnmatch.fnmatchcase(check, e.patterns["check"])
+            and fnmatch.fnmatchcase(path, e.patterns["path"])
+            and fnmatch.fnmatchcase(message, e.patterns.get("message", "*"))
+        ),
+        None,
+    )
+
+
+def match_incomplete(scoped: list[Entry], scanner: str) -> Entry | None:
+    return next(
+        (
+            e
+            for e in scoped
+            if e.section == "incomplete" and fnmatch.fnmatchcase(scanner, e.patterns["scanner"])
+        ),
+        None,
+    )
+
+
+def accept_or_fail(verdict: Verdict, entry: Entry | None, text: str) -> bool:
+    """Record `text` as accepted by `entry`, or as a failure when there is none."""
+    if entry is None:
+        verdict.errors.append(text)
+        return False
+    entry.matched += 1
+    verdict.accepted.append((text, entry.reason))
+    return True
+
+
+def gate_findings(
+    verdict: Verdict, gated: list[dict[str, Any]], scoped: list[Entry], skill: str, skill_dir: Path
+) -> None:
+    for finding in gated:
+        check = f"{finding.get('category', '')}.{finding.get('check_name', '')}"
+        path = relative_path(finding.get("file_path") or "", skill_dir)
+        message = finding.get("message") or ""
+        where = f"{path}:{finding.get('line_number')}" if finding.get("line_number") else path
+        text = f"[{finding['severity'].upper()}] {check} {where}: {message}"
+        if not accept_or_fail(verdict, match_finding(scoped, check, path, message), text):
+            annotate_error(skill, finding, path, check, message)
+
+
+def gate_incomplete(verdict: Verdict, result: dict[str, Any], scoped: list[Entry]) -> None:
+    validator = result.get("validator", "?")
+    for scanner in result.get("incomplete_scans") or []:
+        entry = match_incomplete(scoped, scanner)
+        text = f"{validator}: scanner '{scanner}' did not complete"
+        if entry is None:
+            detail = "; ".join((result.get("legacy") or {}).get("errors", [])[:3])
+            text = f"{text}{f' ({detail})' if detail else ''}"
+        accept_or_fail(verdict, entry, text)
+
+
+def gate_unstructured(
+    verdict: Verdict, result: dict[str, Any], gated: list[dict[str, Any]], legacy_errors: list[str]
+) -> None:
+    """A validator can fail through its legacy error list without a structured finding.
+
+    When the result is not incomplete, those errors have nothing a baseline entry could
+    match, so they fail rather than pass unread.
+    """
+    structured = {legacy_string(f) for f in gated}
+    unstructured = [e for e in legacy_errors if e not in structured]
+    if result.get("status") == "failed" and unstructured and not result.get("incomplete_scans"):
+        detail = "; ".join(unstructured[:3])
+        validator = result.get("validator", "?")
+        verdict.errors.append(f"{validator}: {len(unstructured)} unstructured error(s): {detail}")
+
+
+def gate_report_shape(verdict: Verdict, report: dict[str, Any], min_score: float) -> bool:
+    """Profile and quality floor; False when there are no results to gate at all."""
     profile = (report.get("policy") or {}).get("profile")
     if profile != EXPECTED_PROFILE:
         verdict.errors.append(
             f"report ran under policy profile {profile!r}, not {EXPECTED_PROFILE!r}; "
             "was --policy .skillevaluator-policy.yaml dropped?"
         )
-
     results = report.get("results")
     if not isinstance(results, list) or not results:
         verdict.errors.append("report has no validator results; the run did not complete")
-        return verdict
-
+        return False
     for quality in report.get("quality_summary") or []:
         score = quality.get("overall_score")
         if isinstance(score, (int, float)) and score < min_score:
             verdict.errors.append(f"quality score {score} is below the minimum of {min_score:g}")
+    return True
 
-    for result in results:
-        validator = result.get("validator", "?")
-        findings = result.get("findings") or []
+
+def gate(
+    report: dict[str, Any], skill: str, skill_dir: Path, entries: list[Entry], min_score: float
+) -> Verdict:
+    verdict = Verdict()
+    scoped = [e for e in entries if in_scope(e, skill)]
+    if not gate_report_shape(verdict, report, min_score):
+        return verdict
+
+    for result in report["results"]:
         legacy_errors = list((result.get("legacy") or {}).get("errors") or [])
-        gated = [f for f in findings if is_gated(f, set(legacy_errors))]
+        gated = gated_findings(result, legacy_errors)
+        gate_findings(verdict, gated, scoped, skill, skill_dir)
+        gate_incomplete(verdict, result, scoped)
+        gate_unstructured(verdict, result, gated, legacy_errors)
 
-        for finding in gated:
-            check = f"{finding.get('category', '')}.{finding.get('check_name', '')}"
-            path = relative_path(finding.get("file_path") or "", skill_dir)
-            message = finding.get("message") or ""
-            entry = next(
-                (
-                    e
-                    for e in scoped
-                    if e.section == "findings"
-                    and fnmatch.fnmatchcase(check, e.patterns["check"])
-                    and fnmatch.fnmatchcase(path, e.patterns["path"])
-                    and fnmatch.fnmatchcase(message, e.patterns.get("message", "*"))
-                ),
-                None,
-            )
-            where = f"{path}:{finding.get('line_number')}" if finding.get("line_number") else path
-            text = f"[{finding['severity'].upper()}] {check} {where}: {message}"
-            if entry is None:
-                verdict.errors.append(text)
-                annotate_error(skill, finding, path, check, message)
-            else:
-                entry.matched += 1
-                verdict.accepted.append((text, entry.reason))
+    gate_stale(verdict, scoped, skill)
+    return verdict
 
-        for scanner in result.get("incomplete_scans") or []:
-            entry = next(
-                (
-                    e
-                    for e in scoped
-                    if e.section == "incomplete"
-                    and fnmatch.fnmatchcase(scanner, e.patterns["scanner"])
-                ),
-                None,
-            )
-            text = f"{validator}: scanner '{scanner}' did not complete"
-            if entry is None:
-                detail = "; ".join((result.get("legacy") or {}).get("errors", [])[:3])
-                verdict.errors.append(f"{text}{f' ({detail})' if detail else ''}")
-            else:
-                entry.matched += 1
-                verdict.accepted.append((text, entry.reason))
 
-        # A validator can fail through its legacy error list without a structured
-        # finding. When the result is not incomplete, those errors have nothing a
-        # baseline entry could match, so they fail rather than pass unread.
-        structured = {legacy_string(f) for f in gated}
-        unstructured = [e for e in legacy_errors if e not in structured]
-        if result.get("status") == "failed" and unstructured and not result.get("incomplete_scans"):
-            detail = "; ".join(unstructured[:3])
-            verdict.errors.append(f"{validator}: {len(unstructured)} unstructured error(s): {detail}")
-
+def gate_stale(verdict: Verdict, scoped: list[Entry], skill: str) -> None:
+    """The ratchet: an entry scoped to this skill that matched nothing fails."""
     for entry in scoped:
         if entry.matched == 0:
             verdict.errors.append(
                 f"stale baseline entry {entry.label()} matched nothing in '{skill}': "
                 f"remove '{skill}' from its skills: list, or the entry if it was the last"
             )
-    return verdict
 
 
 def annotate_error(skill: str, finding: dict[str, Any], path: str, check: str, message: str) -> None:
