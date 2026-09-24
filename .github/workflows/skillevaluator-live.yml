@@ -2,9 +2,9 @@ name: skillevaluator-live
 
 # NVIDIA SkillEvaluator, Tier 3: live agent evaluation of one skill. A real agent
 # harness attempts each case in the skill's evals/evals.json twice over — with the skill
-# installed and without it — in Harbor containers, and SkillEvaluator grades both arms on
-# security, correctness, discoverability, effectiveness and efficiency and reports the
-# difference as Skill Lift.
+# installed and without it — in Harbor containers. SkillEvaluator grades both arms per
+# dimension (accuracy, goal accuracy, skill execution, skill efficiency, security,
+# behaviour checks) and reports the difference as Skill Lift.
 #
 # This is the skill-vs-no-skill question evaluation/harbor/README.md calls Level 2,
 # asked of a different evidence source: that level runs the executable tasks under
@@ -93,8 +93,9 @@ env:
   SKILLEVALUATOR_COMMIT: 41e5469a229e82f97e4d3597d3422efa703fd4fe
   HARBOR_TELEMETRY: "off"
   # Harbor starts each trial with `docker compose up --wait`, and SkillEvaluator's
-  # trial images set HEALTHCHECK NONE. Compose up to v5.0.1 (the runner's bundled v2.x
-  # included) fails --wait with "has no healthcheck configured"; v5.0.2+ accepts it.
+  # trial images set HEALTHCHECK NONE. Compose up to v5.0.1, which includes the one
+  # ubuntu-latest ships, fails --wait with "has no healthcheck configured"; v5.0.2 and
+  # later accept it.
   COMPOSE_VERSION: "5.5.1"
   COMPOSE_SHA256: db1889184726840f75c4f9c001048430d4f25b3be3cb084d3ddd762bc0aed576
 
@@ -224,8 +225,9 @@ jobs:
           set -euo pipefail
           args=(--agents "$AGENTS" --env-mode docker --n-attempts "$N_ATTEMPTS"
                 --results-dir results --progress plain
-                # Keep Harbor's job dirs under results/ so the uploaded artifact carries
-                # full trial and Docker build logs; the CLI summary truncates them.
+                # Harbor's job directories, which hold the runtime preflight's container
+                # and agent logs. Without them a run that fails before the matrix leaves
+                # only a one-line reason in the artifact.
                 --harbor-keep-jobs
                 --evaluated-source-repository "$REPO"
                 --evaluated-source-revision "$SHA")
@@ -234,6 +236,8 @@ jobs:
           [ "$SKIP_BASELINE" = "true" ] && args+=(--skip-baseline)
           skillevaluator tier3 evaluate "skills/${SKILL}" "${args[@]}"
 
+      # To the log as well as the job summary, as the gate scripts do, so the numbers are
+      # in the run's log download too.
       - name: Summarize
         if: always()
         env:
@@ -247,7 +251,7 @@ jobs:
             echo '```'
             echo
             echo "Full report: the \`skillevaluator-live-${SKILL}\` artifact (report.html, result.json, run_config.json)."
-          } >> "$GITHUB_STEP_SUMMARY"
+          } | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Upload results
         if: always()
@@ -255,4 +259,8 @@ jobs:
         with:
           name: skillevaluator-live-${{ inputs.skill }}
           path: results/
+          # Each run directory carries a hidden provenance marker
+          # (.skillevaluator-generated-output); without it `tier3 compare` and
+          # `tier3 report` do not recognise a downloaded copy as a completed run.
+          include-hidden-files: true
           if-no-files-found: warn

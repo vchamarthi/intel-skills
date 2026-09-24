@@ -87,13 +87,15 @@ env:
   # `tier3 validate`, which imports it. uv installs the tool into its own environment,
   # so Harbor 0.13.2 here does not meet harbor-smoke.yml's 0.20.0.
   SKILLEVALUATOR_COMMIT: 41e5469a229e82f97e4d3597d3422efa703fd4fe
-  # Installed into the same tool environment, where SkillEvaluator looks for it first
+  # The scanners SkillEvaluator runs, pinned too: its extras only give lower bounds, and
+  # a `git+` install resolves them fresh rather than from upstream's lockfile. Semgrep
+  # goes into the same tool environment, where SkillEvaluator looks for it first
   # (prefer_interpreter_sibling in utils/tool_runner.py).
   SEMGREP_VERSION: "1.178.0"
+  BANDIT_VERSION: "1.9.4"
+  PIP_AUDIT_VERSION: "2.10.1"
   GITLEAKS_VERSION: "8.30.1"
   GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
-  # Semgrep otherwise reports usage to semgrep.dev from every run.
-  SEMGREP_SEND_METRICS: "off"
   # The Tier 1 checks this gate runs: every default check except `security` (see the
   # header). `dependency` is opt-in upstream and needs network to OSV; skills here ship
   # no lockfiles for it to read.
@@ -153,6 +155,12 @@ jobs:
             --infra-path .skillevaluator-policy.yaml)"
           echo "skills=$skills" >> "$GITHUB_OUTPUT"
 
+      # On every run, whatever was selected: a change that deletes or renames a skill
+      # selects nothing, and would otherwise leave a baseline entry naming it to fail
+      # the next, unrelated pull request.
+      - name: Baseline names only skills that exist
+        run: uv run .github/scripts/skillevaluator_gate.py --check-baseline --annotate
+
   # One job for the whole selection rather than a matrix per skill, unlike
   # skillspector.yml: a SkillEvaluator run is seconds per skill and the install is the
   # expensive part, so a 33-way matrix would spend most of its time installing the same
@@ -179,7 +187,9 @@ jobs:
         run: |
           uv tool install --python 3.13 \
             "skillevaluator[security,tier3] @ git+https://github.com/NVIDIA/SkillEvaluator.git@${SKILLEVALUATOR_COMMIT}" \
-            --with "semgrep==${SEMGREP_VERSION}"
+            --with "semgrep==${SEMGREP_VERSION}" \
+            --with "bandit==${BANDIT_VERSION}" \
+            --with "pip-audit==${PIP_AUDIT_VERSION}"
           # Where uv put the console script, stated rather than assumed on PATH.
           uv tool dir --bin >> "$GITHUB_PATH"
           "$(uv tool dir --bin)/skillevaluator" --version
@@ -206,10 +216,11 @@ jobs:
 
       # First, because every way the gate can break is silent: a matcher that accepts
       # too much reads exactly like a clean catalog. It runs one real skill's report
-      # with one defect injected at a time — an unaccepted HIGH and CRITICAL finding, an
-      # incomplete scanner, the wrong policy profile, an empty report, a stale baseline
-      # entry — and fails unless every one turns the verdict red. xpu-port because it
-      # has both kinds of baseline entry to exercise.
+      # with one defect injected at a time — an unaccepted HIGH, CRITICAL, or
+      # error-level MEDIUM finding, an incomplete scanner, an unstructured error, the
+      # wrong policy profile, an empty report, a quality score under the minimum, a
+      # stale baseline entry — and fails unless every one turns the verdict red.
+      # xpu-port because it has accepted findings for the stale-entry check to remove.
       - name: Gate still refuses what it should
         run: |
           set -uo pipefail
@@ -226,9 +237,11 @@ jobs:
             exit 1
           fi
           uv run .github/scripts/skillevaluator_gate.py \
-            --report-dir "$out" --skill xpu-port --self-test --annotate
+            --report-dir "$out" --skill xpu-port --min-score "$MIN_QUALITY_SCORE" \
+            --self-test --annotate
 
       - name: Validate skills
+        id: validate
         env:
           SKILLS_JSON: ${{ needs.discover-skills.outputs.skills }}
           REPO: ${{ github.repository }}
@@ -239,8 +252,8 @@ jobs:
           failed=0
           for skill in $(printf '%s' "$SKILLS_JSON" | jq -r '.[]'); do
             echo "::group::${skill}"
-            # `|| code=$?`, not a bare `code=$?`: under the `bash -e` Actions uses, exit 1
-            # would end the step on the first skill with a verdict.
+            # Actions runs this under `bash -e`, so the status is captured with `||`:
+            # exit 1 is a verdict, and must not end the loop at the first skill with one.
             code=0
             skillevaluator validate "skills/${skill}" \
               --external --policy .skillevaluator-policy.yaml \
@@ -260,8 +273,10 @@ jobs:
           done
           exit "$failed"
 
+      # Skipped with Validate skills, when the self-test above failed: there are no
+      # reports to gate, and the self-test's own error is the one to read.
       - name: Gate on the baseline
-        if: always()
+        if: ${{ !cancelled() && steps.validate.outcome != 'skipped' }}
         env:
           SKILLS_JSON: ${{ needs.discover-skills.outputs.skills }}
         run: |
@@ -269,7 +284,8 @@ jobs:
           failed=0
           for skill in $(printf '%s' "$SKILLS_JSON" | jq -r '.[]'); do
             uv run .github/scripts/skillevaluator_gate.py \
-              --report-dir "reports/${skill}" --skill "$skill" --annotate || failed=1
+              --report-dir "reports/${skill}" --skill "$skill" \
+              --min-score "$MIN_QUALITY_SCORE" --annotate || failed=1
           done
           exit "$failed"
 
