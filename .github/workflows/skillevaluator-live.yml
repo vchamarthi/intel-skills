@@ -27,10 +27,14 @@ name: skillevaluator-live
 # string, which is not the same as unset.
 #
 #   evaluator (judge)   SKILL_EVAL_LLM_PROVIDER from the input below, plus its key:
-#                       ANTHROPIC_API_KEY, OPENAI_API_KEY, NVIDIA_API_KEY, or the AWS pair
-#                       for bedrock
-#   claude-code agent   ANTHROPIC_API_KEY (or the AWS pair) and an explicit
+#                       ANTHROPIC_API_KEY, OPENAI_API_KEY, NVIDIA_API_KEY, or bedrock
+#                       credentials (below)
+#   claude-code agent   ANTHROPIC_API_KEY (or bedrock credentials) and an explicit
 #                       --agent-model claude-code=MODEL
+#   bedrock             AWS_REGION plus either AWS_BEARER_TOKEN_BEDROCK (a Bedrock API
+#                       key) or the AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY pair.
+#                       SkillEvaluator's probe, judge and the claude-code agent all read
+#                       the bearer token; if both are set, AWS uses the token.
 #   codex agent         OPENAI_API_KEY (+ OPENAI_BASE_URL) and an explicit model
 #   opencode agent      NVIDIA_API_KEY
 #
@@ -142,18 +146,30 @@ jobs:
           IN_NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
           IN_AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           IN_AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          IN_AWS_BEARER_TOKEN_BEDROCK: ${{ secrets.AWS_BEARER_TOKEN_BEDROCK }}
           IN_AWS_REGION: ${{ secrets.AWS_REGION }}
           PROVIDER: ${{ inputs.evaluator_provider }}
         run: |
           set -euo pipefail
           for name in ANTHROPIC_API_KEY OPENAI_API_KEY OPENAI_BASE_URL NVIDIA_API_KEY \
-                      AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_REGION; do
+                      AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_BEARER_TOKEN_BEDROCK \
+                      AWS_REGION; do
             value="$(printenv "IN_${name}" || true)"
             if [ -n "$value" ]; then
               echo "${name}=${value}" >> "$GITHUB_ENV"
               echo "exported ${name}"
             fi
           done
+          # SkillEvaluator falls back to us-west-2 without AWS_REGION, which is a silent
+          # wrong region rather than an error, so bedrock states both halves up front.
+          if [ "$PROVIDER" = "bedrock" ]; then
+            [ -n "${IN_AWS_REGION:-}" ] || { echo "::error::bedrock needs the AWS_REGION secret."; exit 1; }
+            if [ -z "${IN_AWS_BEARER_TOKEN_BEDROCK:-}" ] &&
+               { [ -z "${IN_AWS_ACCESS_KEY_ID:-}" ] || [ -z "${IN_AWS_SECRET_ACCESS_KEY:-}" ]; }; then
+              echo "::error::bedrock needs AWS_BEARER_TOKEN_BEDROCK, or both AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY."
+              exit 1
+            fi
+          fi
           echo "SKILL_EVAL_LLM_PROVIDER=${PROVIDER}" >> "$GITHUB_ENV"
 
       - name: Readiness
