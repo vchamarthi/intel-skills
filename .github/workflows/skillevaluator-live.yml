@@ -64,6 +64,11 @@ on:
         default: "anthropic"
         type: choice
         options: [anthropic, openai, nv_build, bedrock]
+      evaluator_model:
+        description: "Judge model (SKILL_EVAL_LLM_MODEL). Empty = SkillEvaluator's provider default, which can lag the provider's catalog."
+        required: false
+        default: ""
+        type: string
       n_attempts:
         description: "Attempts per case. suites.json: 1 probe, 3 calibration, 5 promotion."
         required: true
@@ -149,6 +154,7 @@ jobs:
           IN_AWS_BEARER_TOKEN_BEDROCK: ${{ secrets.AWS_BEARER_TOKEN_BEDROCK }}
           IN_AWS_REGION: ${{ secrets.AWS_REGION }}
           PROVIDER: ${{ inputs.evaluator_provider }}
+          EVALUATOR_MODEL: ${{ inputs.evaluator_model }}
         run: |
           set -euo pipefail
           for name in ANTHROPIC_API_KEY OPENAI_API_KEY OPENAI_BASE_URL NVIDIA_API_KEY \
@@ -171,6 +177,10 @@ jobs:
             fi
           fi
           echo "SKILL_EVAL_LLM_PROVIDER=${PROVIDER}" >> "$GITHUB_ENV"
+          if [ -n "$EVALUATOR_MODEL" ]; then
+            [[ "$EVALUATOR_MODEL" =~ ^[A-Za-z0-9._:/-]+$ ]] || { echo "::error::evaluator_model has characters a model id cannot."; exit 1; }
+            echo "SKILL_EVAL_LLM_MODEL=${EVALUATOR_MODEL}" >> "$GITHUB_ENV"
+          fi
 
       - name: Readiness
         env:
