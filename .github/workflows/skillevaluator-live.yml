@@ -259,8 +259,4 @@ jobs:
         with:
           name: skillevaluator-live-${{ inputs.skill }}
           path: results/
-          # Each run directory carries a hidden provenance marker
-          # (.skillevaluator-generated-output); without it `tier3 compare` and
-          # `tier3 report` do not recognise a downloaded copy as a completed run.
-          include-hidden-files: true
           if-no-files-found: warn
