@@ -2,9 +2,9 @@ name: skillevaluator-live
 
 # NVIDIA SkillEvaluator, Tier 3: live agent evaluation of one skill. A real agent
 # harness attempts each case in the skill's evals/evals.json twice over — with the skill
-# installed and without it — in Harbor containers, and SkillEvaluator grades both arms on
-# security, correctness, discoverability, effectiveness and efficiency and reports the
-# difference as Skill Lift.
+# installed and without it — in Harbor containers. SkillEvaluator grades both arms per
+# dimension (accuracy, goal accuracy, skill execution, skill efficiency, security,
+# behaviour checks) and reports the difference as Skill Lift.
 #
 # This is the skill-vs-no-skill question evaluation/harbor/README.md calls Level 2,
 # asked of a different evidence source: that level runs the executable tasks under
@@ -64,6 +64,11 @@ on:
         default: "anthropic"
         type: choice
         options: [anthropic, openai, nv_build, bedrock]
+      evaluator_model:
+        description: "Judge model (SKILL_EVAL_LLM_MODEL); also the agents' default when agent_model is empty. Empty = the environment variable SKILL_EVAL_LLM_MODEL, else the provider default."
+        required: false
+        default: ""
+        type: string
       n_attempts:
         description: "Attempts per case. suites.json: 1 probe, 3 calibration, 5 promotion."
         required: true
@@ -87,6 +92,12 @@ env:
   # Same pin as skillevaluator.yml; bump the two together.
   SKILLEVALUATOR_COMMIT: 41e5469a229e82f97e4d3597d3422efa703fd4fe
   HARBOR_TELEMETRY: "off"
+  # Harbor starts each trial with `docker compose up --wait`, and SkillEvaluator's
+  # trial images set HEALTHCHECK NONE. Compose up to v5.0.1, which includes the one
+  # ubuntu-latest ships, fails --wait with "has no healthcheck configured"; v5.0.2 and
+  # later accept it.
+  COMPOSE_VERSION: "5.5.1"
+  COMPOSE_SHA256: db1889184726840f75c4f9c001048430d4f25b3be3cb084d3ddd762bc0aed576
 
 jobs:
   live-eval:
@@ -122,6 +133,17 @@ jobs:
         with:
           enable-cache: false
 
+      - name: Install Docker Compose
+        run: |
+          set -euo pipefail
+          dir="${HOME}/.docker/cli-plugins"
+          mkdir -p "$dir"
+          curl -fsSL --retry 3 -o "${dir}/docker-compose" \
+            "https://github.com/docker/compose/releases/download/v${COMPOSE_VERSION}/docker-compose-linux-x86_64"
+          echo "${COMPOSE_SHA256}  ${dir}/docker-compose" | sha256sum -c -
+          chmod +x "${dir}/docker-compose"
+          docker compose version
+
       - name: Install SkillEvaluator
         run: |
           uv tool install --python 3.13 \
@@ -149,6 +171,9 @@ jobs:
           IN_AWS_BEARER_TOKEN_BEDROCK: ${{ secrets.AWS_BEARER_TOKEN_BEDROCK }}
           IN_AWS_REGION: ${{ secrets.AWS_REGION }}
           PROVIDER: ${{ inputs.evaluator_provider }}
+          # A model name is not a credential: a variable, not a secret, so it stays
+          # readable in logs and reports instead of masked as ***.
+          EVALUATOR_MODEL: ${{ inputs.evaluator_model || vars.SKILL_EVAL_LLM_MODEL }}
         run: |
           set -euo pipefail
           for name in ANTHROPIC_API_KEY OPENAI_API_KEY OPENAI_BASE_URL NVIDIA_API_KEY \
@@ -171,6 +196,10 @@ jobs:
             fi
           fi
           echo "SKILL_EVAL_LLM_PROVIDER=${PROVIDER}" >> "$GITHUB_ENV"
+          if [ -n "$EVALUATOR_MODEL" ]; then
+            [[ "$EVALUATOR_MODEL" =~ ^[A-Za-z0-9._:/-]+$ ]] || { echo "::error::evaluator_model has characters a model id cannot."; exit 1; }
+            echo "SKILL_EVAL_LLM_MODEL=${EVALUATOR_MODEL}" >> "$GITHUB_ENV"
+          fi
 
       - name: Readiness
         env:
@@ -196,6 +225,10 @@ jobs:
           set -euo pipefail
           args=(--agents "$AGENTS" --env-mode docker --n-attempts "$N_ATTEMPTS"
                 --results-dir results --progress plain
+                # Harbor's job directories, which hold the runtime preflight's container
+                # and agent logs. Without them a run that fails before the matrix leaves
+                # only a one-line reason in the artifact.
+                --harbor-keep-jobs
                 --evaluated-source-repository "$REPO"
                 --evaluated-source-revision "$SHA")
           IFS=',' read -r -a models <<< "$AGENT_MODEL"
@@ -203,6 +236,8 @@ jobs:
           [ "$SKIP_BASELINE" = "true" ] && args+=(--skip-baseline)
           skillevaluator tier3 evaluate "skills/${SKILL}" "${args[@]}"
 
+      # To the log as well as the job summary, as the gate scripts do, so the numbers are
+      # in the run's log download too.
       - name: Summarize
         if: always()
         env:
@@ -216,7 +251,7 @@ jobs:
             echo '```'
             echo
             echo "Full report: the \`skillevaluator-live-${SKILL}\` artifact (report.html, result.json, run_config.json)."
-          } >> "$GITHUB_STEP_SUMMARY"
+          } | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Upload results
         if: always()

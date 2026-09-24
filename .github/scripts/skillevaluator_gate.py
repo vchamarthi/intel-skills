@@ -7,9 +7,9 @@
 
 """Gate one skill's SkillEvaluator JSON report against .skillevaluator-baseline.yaml.
 
-`skillevaluator validate` already has a verdict: it fails a skill on any HIGH or CRITICAL
-finding and on any scanner that did not complete. What it has no way to express is an
-accepted finding. Its policy overlay remaps a *kind* of finding catalog-wide, keyed on
+`skillevaluator validate` already has a verdict: it fails a skill on every finding a
+validator counts as an error, on any scanner that did not complete, and on a quality
+score below --min-score. What it has no way to express is an accepted finding. Its policy overlay remaps a *kind* of finding catalog-wide, keyed on
 CATEGORY.check_name, and there is no baseline, fingerprint or per-file suppression. A
 catalog with 23 imported skills needs one, because the repair for an imported body lands
 upstream and arrives through a moved pin, and until then the finding is known and
@@ -18,14 +18,20 @@ reviewed rather than new.
 So this script re-derives the verdict from the JSON with the baseline applied, and
 nothing else:
 
-  * every HIGH/CRITICAL finding must be matched by a `findings` entry scoped to this
-    skill, or it fails -- the same two severities SkillEvaluator counts as errors;
+  * every error-level finding must be matched by a `findings` entry scoped to this
+    skill, or it fails. Error-level is SkillEvaluator's own call, read from the
+    result's error list: every HIGH and CRITICAL, plus the MEDIUM findings a validator
+    raises as errors (a Bandit MEDIUM at medium or high confidence, for one). Gating by
+    severity alone would leave those failing with nothing a baseline entry could match;
   * every scanner in a result's `incomplete_scans` must be matched by an `incomplete`
     entry, or it fails -- an incomplete scan is no answer, and SkillEvaluator's own gate
     treats it as a failure too;
   * a result that failed with an error the findings do not account for (a validator that
     reported through its legacy error list rather than a finding) fails, because there
     is nothing structured to accept it by;
+  * a quality score below --min-score fails. SkillEvaluator records that only as the
+    QUALITY result's `passed`, with no finding or error behind it, so nothing else
+    here would see it. It is not a baseline matter: the fix is in the skill;
   * a baseline entry scoped to this skill that matched nothing fails, so fixing a
     finding forces its acceptance out in the same pull request. The file is a ratchet.
 
@@ -41,7 +47,8 @@ as 33 regressions rather than as one dropped flag.
 Usage:
 
     uv run .github/scripts/skillevaluator_gate.py \\
-        --report-dir reports/linux-perf --skill linux-perf --annotate
+        --report-dir reports/linux-perf --skill linux-perf --min-score 70 --annotate
+    uv run .github/scripts/skillevaluator_gate.py --check-baseline
 
 Exits 0 when the skill passes, 1 when it fails or the report cannot be trusted, and 2 on
 a usage error or an unreadable baseline.
@@ -65,6 +72,8 @@ DEFAULT_BASELINE = REPO_ROOT / ".skillevaluator-baseline.yaml"
 DEFAULT_SKILLS_DIR = REPO_ROOT / "skills"
 EXPECTED_PROFILE = "intel-skills"
 GATED_SEVERITIES = ("critical", "high")
+DEFAULT_MIN_SCORE = 70.0
+GLOB_CHARS = set("*?[")
 SEVERITY_ORDER = ("critical", "high", "medium", "low", "info")
 
 
@@ -122,17 +131,39 @@ def load_baseline(path: Path, skills_on_disk: list[str]) -> list[Entry]:
                 raise ValueError(f"{where} reason must start with POLICY: or TRACKED:")
             skills = raw["skills"]
             if not isinstance(skills, list) or not all(isinstance(s, str) for s in skills):
-                raise ValueError(f"{where} skills must be a list of names or patterns")
-            for pattern in skills:
-                if not fnmatch.filter(skills_on_disk, pattern):
-                    raise ValueError(f"{where} scope {pattern!r} matches no skill under skills/")
+                raise ValueError(f"{where} skills must be a list of skill names")
+            for name in skills:
+                # Exact names only. A pattern would also scope skills added later, which
+                # then fail as stale for an entry that never named them.
+                if GLOB_CHARS & set(name):
+                    raise ValueError(f"{where} scope {name!r} is a pattern; list skill names")
+                if name not in skills_on_disk:
+                    raise ValueError(f"{where} scope {name!r} is not a skill under skills/")
             patterns = {k: str(raw[k]) for k in (*keys, *optional[section]) if k in raw}
             entries.append(Entry(section, index, patterns, skills, reason))
     return entries
 
 
 def in_scope(entry: Entry, skill: str) -> bool:
-    return any(fnmatch.fnmatchcase(skill, pattern) for pattern in entry.skills)
+    return skill in entry.skills
+
+
+def legacy_string(finding: dict[str, Any]) -> str:
+    """The line SkillEvaluator writes to a result's error or warning list for a finding.
+
+    Same shape as ValidationResult.add_structured_finding, which is what tells an
+    error-level finding from a warning: only the former is in `legacy.errors`.
+    """
+    location = finding.get("file_path") or ""
+    if finding.get("line_number"):
+        location += f":{finding['line_number']}"
+    severity = str(finding.get("severity", "")).upper()
+    return f"[{finding.get('category', '')}-{severity}] {finding.get('message', '')} in {location}"
+
+
+def is_gated(finding: dict[str, Any], legacy_errors: set[str]) -> bool:
+    severity = str(finding.get("severity", "")).lower()
+    return severity in GATED_SEVERITIES or legacy_string(finding) in legacy_errors
 
 
 def relative_path(file_path: str, skill_dir: Path) -> str:
@@ -154,7 +185,9 @@ def find_report(report_dir: Path) -> Path:
     return candidates[-1]
 
 
-def gate(report: dict[str, Any], skill: str, skill_dir: Path, entries: list[Entry]) -> Verdict:
+def gate(
+    report: dict[str, Any], skill: str, skill_dir: Path, entries: list[Entry], min_score: float
+) -> Verdict:
     verdict = Verdict()
     scoped = [e for e in entries if in_scope(e, skill)]
 
@@ -170,10 +203,16 @@ def gate(report: dict[str, Any], skill: str, skill_dir: Path, entries: list[Entr
         verdict.errors.append("report has no validator results; the run did not complete")
         return verdict
 
+    for quality in report.get("quality_summary") or []:
+        score = quality.get("overall_score")
+        if isinstance(score, (int, float)) and score < min_score:
+            verdict.errors.append(f"quality score {score} is below the minimum of {min_score:g}")
+
     for result in results:
         validator = result.get("validator", "?")
         findings = result.get("findings") or []
-        gated = [f for f in findings if str(f.get("severity", "")).lower() in GATED_SEVERITIES]
+        legacy_errors = list((result.get("legacy") or {}).get("errors") or [])
+        gated = [f for f in findings if is_gated(f, set(legacy_errors))]
 
         for finding in gated:
             check = f"{finding.get('category', '')}.{finding.get('check_name', '')}"
@@ -220,11 +259,11 @@ def gate(report: dict[str, Any], skill: str, skill_dir: Path, entries: list[Entr
         # A validator can fail through its legacy error list without a structured
         # finding. When the result is not incomplete, those errors have nothing a
         # baseline entry could match, so they fail rather than pass unread.
-        summary = result.get("summary") or {}
-        legacy_errors = int(summary.get("errors") or 0) - len(gated)
-        if result.get("status") == "failed" and legacy_errors > 0 and not result.get("incomplete_scans"):
-            detail = "; ".join((result.get("legacy") or {}).get("errors", [])[:3])
-            verdict.errors.append(f"{validator}: {legacy_errors} unstructured error(s): {detail}")
+        structured = {legacy_string(f) for f in gated}
+        unstructured = [e for e in legacy_errors if e not in structured]
+        if result.get("status") == "failed" and unstructured and not result.get("incomplete_scans"):
+            detail = "; ".join(unstructured[:3])
+            verdict.errors.append(f"{validator}: {len(unstructured)} unstructured error(s): {detail}")
 
     for entry in scoped:
         if entry.matched == 0:
@@ -282,7 +321,9 @@ def write_summary(skill: str, report: dict[str, Any] | None, verdict: Verdict) -
 ANNOTATE = False
 
 
-def self_test(report: dict[str, Any], skill: str, skill_dir: Path, baseline: Path, on_disk: list[str]) -> list[str]:
+def self_test(
+    report: dict[str, Any], skill: str, skill_dir: Path, baseline: Path, on_disk: list[str], min_score: float
+) -> list[str]:
     """Assert the gate still refuses each thing it exists to refuse.
 
     Every way this gate can break is silent: a matcher that stops matching accepts
@@ -292,11 +333,13 @@ def self_test(report: dict[str, Any], skill: str, skill_dir: Path, baseline: Pat
     """
 
     def run(mutated: dict[str, Any]) -> Verdict:
-        return gate(mutated, skill, skill_dir, load_baseline(baseline, on_disk))
+        return gate(mutated, skill, skill_dir, load_baseline(baseline, on_disk), min_score)
 
     problems: list[str] = []
-    if run(json.loads(json.dumps(report))).errors:
+    unmodified = run(json.loads(json.dumps(report)))
+    if unmodified.errors:
         problems.append(f"the unmodified report for '{skill}' does not pass; self-test needs a passing skill")
+        problems.extend(f"  {error}" for error in unmodified.errors)
         return problems
 
     def mutate(label: str, change) -> None:
@@ -324,27 +367,43 @@ def self_test(report: dict[str, Any], skill: str, skill_dir: Path, baseline: Pat
     def no_results(r: dict[str, Any]) -> None:
         r["results"] = []
 
+    def medium_error(r: dict[str, Any]) -> None:
+        finding = {
+            "category": "SELFTEST", "severity": "medium", "check_name": "injected",
+            "message": "injected by --self-test", "file_path": str(skill_dir / "SKILL.md"),
+        }
+        result = r["results"][0]
+        result.setdefault("findings", []).append(finding)
+        result.setdefault("legacy", {}).setdefault("errors", []).append(legacy_string(finding))
+        result["status"] = "failed"
+
     def unstructured(r: dict[str, Any]) -> None:
-        r["results"][0]["status"] = "failed"
-        r["results"][0]["incomplete_scans"] = []
-        r["results"][0].setdefault("summary", {})["errors"] = 99
+        result = r["results"][0]
+        result["status"] = "failed"
+        result["incomplete_scans"] = []
+        result.setdefault("legacy", {}).setdefault("errors", []).append("[SELFTEST] unstructured error")
+
+    def low_quality(r: dict[str, Any]) -> None:
+        if not r.get("quality_summary"):
+            r["quality_summary"] = [{}]
+        r["quality_summary"][0]["overall_score"] = min_score - 1
 
     mutate("an unaccepted HIGH finding", new_high)
     mutate("an unaccepted CRITICAL finding", new_critical)
+    mutate("an unaccepted MEDIUM finding SkillEvaluator counts as an error", medium_error)
     mutate("an unaccepted incomplete scanner", incomplete)
     mutate("the bare external profile", profile)
     mutate("no validator results", no_results)
     mutate("an unstructured validator error", unstructured)
+    mutate("a quality score below the minimum", low_quality)
 
     # Stale entries: dropping every gated finding and incomplete scan must fail when the
     # baseline scopes an entry to this skill, because that entry then matches nothing.
     if any(in_scope(e, skill) for e in load_baseline(baseline, on_disk)):
         def clean(r: dict[str, Any]) -> None:
             for result in r["results"]:
-                result["findings"] = [
-                    f for f in result.get("findings") or []
-                    if str(f.get("severity", "")).lower() not in GATED_SEVERITIES
-                ]
+                errors = set((result.get("legacy") or {}).get("errors") or [])
+                result["findings"] = [f for f in result.get("findings") or [] if not is_gated(f, errors)]
                 result["incomplete_scans"] = []
         mutate("a stale baseline entry", clean)
     else:
@@ -357,9 +416,16 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    parser.add_argument("--report-dir", type=Path, required=True,
+    parser.add_argument("--report-dir", type=Path,
                         help="Directory `validate -o` wrote this skill's reports into.")
-    parser.add_argument("--skill", required=True, help="Skill directory name under skills/.")
+    parser.add_argument("--skill", help="Skill directory name under skills/.")
+    parser.add_argument("--min-score", type=float, default=DEFAULT_MIN_SCORE,
+                        help="Quality score below which the skill fails; pass the "
+                        "--min-score validate ran with (default: %(default)s).")
+    parser.add_argument("--check-baseline", action="store_true",
+                        help="Only check that the baseline parses and that every scope "
+                        "names a skill on disk. Runs on every change, so deleting a skill "
+                        "the baseline names fails in that pull request, not the next one.")
     parser.add_argument("--baseline", type=Path, default=DEFAULT_BASELINE)
     parser.add_argument("--skills-dir", type=Path, default=DEFAULT_SKILLS_DIR)
     parser.add_argument("--annotate", action="store_true",
@@ -372,15 +438,21 @@ def main(argv: list[str] | None = None) -> int:
     ANNOTATE = args.annotate
 
     skills_dir = args.skills_dir.resolve()
-    skill_dir = skills_dir / args.skill
-    if not (skill_dir / "SKILL.md").is_file():
-        print(f"error: {skill_dir} is not a skill", file=sys.stderr)
-        return 2
     on_disk = sorted(p.name for p in skills_dir.iterdir() if (p / "SKILL.md").is_file())
     try:
         entries = load_baseline(args.baseline, on_disk)
     except ValueError as exc:
-        print(f"error: {exc}", file=sys.stderr)
+        print(f"::error title=SkillEvaluator baseline::{exc}" if ANNOTATE else f"error: {exc}", file=sys.stderr)
+        return 2
+    if args.check_baseline:
+        print(f"baseline ok: {len(entries)} entries, every scope names a skill under skills/")
+        return 0
+
+    if not args.report_dir or not args.skill:
+        parser.error("--report-dir and --skill are required unless --check-baseline is given")
+    skill_dir = skills_dir / args.skill
+    if not (skill_dir / "SKILL.md").is_file():
+        print(f"error: {skill_dir} is not a skill", file=sys.stderr)
         return 2
 
     try:
@@ -397,14 +469,14 @@ def main(argv: list[str] | None = None) -> int:
         # Injected findings are expected to fail; annotating them would put errors on
         # the diff for defects that exist only in memory.
         ANNOTATE = False
-        problems = self_test(report, args.skill, skill_dir, args.baseline, on_disk)
+        problems = self_test(report, args.skill, skill_dir, args.baseline, on_disk, args.min_score)
         for problem in problems:
             print(f"::error title=SkillEvaluator gate self-test::{problem}" if args.annotate else problem)
         if not problems:
             print(f"self-test ok: the gate refused every injected defect in '{args.skill}'")
         return 1 if problems else 0
 
-    verdict = gate(report, args.skill, skill_dir, entries)
+    verdict = gate(report, args.skill, skill_dir, entries, args.min_score)
     write_summary(args.skill, report, verdict)
     return 1 if verdict.errors else 0
 

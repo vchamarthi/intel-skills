@@ -270,19 +270,21 @@ commit=$(sed -n 's/.*SKILLEVALUATOR_COMMIT: \([0-9a-f]\{40\}\).*/\1/p' \
   .github/workflows/skillevaluator.yml | head -1)
 uv tool install --python 3.13 \
   "skillevaluator[security,tier3] @ git+https://github.com/NVIDIA/SkillEvaluator.git@${commit}" \
-  --with semgrep==1.178.0
+  --with semgrep==1.178.0 --with bandit==1.9.4 --with pip-audit==2.10.1
 # plus the gitleaks binary on PATH (brew install gitleaks); without it the scan is incomplete
 skillevaluator validate skills/your-skill-name --external \
   --policy .skillevaluator-policy.yaml \
   --checks schema,version,pii,license,code-integrity,unicode,quality,lint \
   --no-dedup -c -r cli,json -o reports/your-skill-name
 uv run .github/scripts/skillevaluator_gate.py \
-  --report-dir reports/your-skill-name --skill your-skill-name
+  --report-dir reports/your-skill-name --skill your-skill-name --min-score 70
 skillevaluator tier3 validate skills/your-skill-name --strict   # only if you wrote evals/
 ```
 
-A HIGH or CRITICAL finding fails, and so does a scanner that could not finish. MEDIUM and
-LOW are reported for you to read. The same rule as for SkillSpector applies: if the finding
+A finding SkillEvaluator counts as an error fails — every HIGH and CRITICAL, and the few
+MEDIUM findings a validator raises as errors, such as a Bandit finding it is confident of —
+and so do a scanner that could not finish and a quality score under 70. The rest are
+warnings, reported for you to read. The same rule as for SkillSpector applies: if the finding
 is real, fix it; if it is not, add an entry to
 [`.skillevaluator-baseline.yaml`](.skillevaluator-baseline.yaml) with a `POLICY:` or
 `TRACKED:` reason and your skill under `skills:`. An entry that stops matching fails too,
@@ -350,9 +352,9 @@ Blocking, keyless, and runnable on a fork:
 - SkillSpector scores the skill within the threshold its origin is held to — 20 for a skill
   written here, 50 for an imported body — with suppressions and their reasons in
   `.skillspector-baseline.yaml`
-- SkillEvaluator Tier 1 reports no HIGH or CRITICAL finding and no incomplete scanner
-  beyond those accepted in `.skillevaluator-baseline.yaml`, the quality score is at least
-  70, and every `evals/evals.json` is a dataset SkillEvaluator's Tier 3 can run
+- SkillEvaluator Tier 1 reports no error-level finding and no incomplete scanner beyond
+  those accepted in `.skillevaluator-baseline.yaml`, the quality score is at least 70, and
+  every `evals/evals.json` is a dataset SkillEvaluator's Tier 3 can run
 - for a new skill: its Harbor task is solvable, oracle reward 1.0
 - no Harbor task's instruction gives away more than 5 points of its own skill's answer —
   a point per API symbol the skill teaches, three per line of code copyable straight out
@@ -369,7 +371,7 @@ Blocking, keyless, and runnable on a fork:
 Reported but not blocking: the coverage gaps between what a suite claims and what it
 implements, a dead link in a body this repository copied rather than wrote, a
 SkillSpector HIGH/CRITICAL finding in a skill whose score is still within its threshold,
-and SkillEvaluator's MEDIUM/LOW findings and advisory script lint.
+and SkillEvaluator's warnings and advisory script lint.
 
 ## Evaluation levels
 

@@ -227,6 +227,8 @@ the fix, the pin is the wrong pin.
 | `validate.yml` | `install` — the installer resolves, lists, and installs from the catalog | every PR | yes |
 | `harbor-smoke.yml` | the oracle arm over every task in `tasks/` | PRs touching tasks or skills | yes |
 | `security.yml` | `actionlint`, `zizmor` | every PR | yes |
+| `skillevaluator.yml` | SkillEvaluator Tier 1 on each changed skill, gated by `skillevaluator_gate.py` against `.skillevaluator-baseline.yaml` | PRs touching skills or its own machinery, push, weekly | yes |
+| `skillevaluator-live.yml` | SkillEvaluator Tier 3: one skill's `evals/` cases, with and without the skill, under a real agent | dispatched by hand | no |
 | `codeql.yml` | code scanning, Python | PRs, push, weekly | reports |
 
 `codeql.yml` runs its job only where the repository is public, which it reads from the event
@@ -236,9 +238,11 @@ would succeed and only the upload would fail — a check that is always red, whi
 people to ignore red checks. Anyone holding this tree privately should not count it as
 coverage.
 
-There is no secrets-scanning job either: the action for it needs an organisation licence key
-this repository has no secret for, so the job could only ever fail. GitHub's own secret
-scanning covers it instead.
+There is no repository-wide secrets-scanning job either: the action for it needs an
+organisation licence key this repository has no secret for, so the job could only ever
+fail. `skillevaluator.yml` runs the gitleaks binary, which needs no key, over every skill it
+validates, so a secret in a skill blocks its pull request; GitHub's own secret scanning
+covers the rest of the tree.
 
 The oracle arm applies each task's `solution/solve.sh` and never reads `SKILL.md`. It
 proves a task is solvable and its verifier emits a reward — nothing about the skill. It
@@ -248,6 +252,32 @@ Levels 2 and 3 do need inference credentials, so they are run by hand and their 
 attached to the pull request. Wiring an arm that needs a credential into a workflow that
 must also run on forks is unsolved; a gate nobody can run on a fork is not one this
 repository will pretend to have.
+
+### Running `skillevaluator-live.yml`
+
+The workflow reads its credentials from a `skillevaluator-live` environment, which has to
+exist before the first dispatch. Give it a required reviewer, so starting a run is not by
+itself permission to spend on one, and add the secrets for the provider you will use:
+
+| Provider (`evaluator_provider`) | Secrets | Agents that key covers on its own |
+|---|---|---|
+| `anthropic` | `ANTHROPIC_API_KEY` | `claude-code` |
+| `openai` | `OPENAI_API_KEY`, `OPENAI_BASE_URL` (`https://api.openai.com/v1`) | `codex` |
+| `nv_build` | `NVIDIA_API_KEY` | `opencode`, `codex`, `claude-code` |
+| `bedrock` | `AWS_REGION`, and `AWS_BEARER_TOKEN_BEDROCK` or `AWS_ACCESS_KEY_ID` + `AWS_SECRET_ACCESS_KEY` | `claude-code` |
+
+The provider's key also pays for the judge. The judge model is the `evaluator_model` input,
+else the environment variable (not secret) `SKILL_EVAL_LLM_MODEL`, else SkillEvaluator's
+default for the provider; it is also the agents' model unless `agent_model` names one.
+
+```bash
+gh workflow run skillevaluator-live.yml -f skill=dpnp-io -f agents=codex \
+  -f evaluator_provider=openai -f agent_model=codex=gpt-5.6-sol -f n_attempts=3
+```
+
+The job summary carries the Skill Lift table; the `skillevaluator-live-<skill>` artifact
+carries `report.html`, `result.json`, every trial's transcript, and Harbor's job logs. The
+artifact is as readable as the repository, so treat agent transcripts as public.
 
 ## Tools
 
