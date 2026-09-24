@@ -214,10 +214,17 @@ jobs:
         run: |
           set -uo pipefail
           out="${RUNNER_TEMP}/selftest"
+          # Actions runs this under `bash -e`, and exit 1 is SkillEvaluator's own verdict,
+          # not an error, so the status is captured rather than left to abort the step.
+          code=0
           skillevaluator validate skills/xpu-port \
             --external --policy .skillevaluator-policy.yaml \
             --checks "$TIER1_CHECKS" --no-dedup -c --min-score "$MIN_QUALITY_SCORE" \
-            -r json -o "$out" >/dev/null 2>&1
+            -r json -o "$out" >/dev/null 2>&1 || code=$?
+          if [ "$code" -gt 1 ]; then
+            echo "::error title=SkillEvaluator error::validate exited ${code} on 'xpu-port'; no report to self-test."
+            exit 1
+          fi
           uv run .github/scripts/skillevaluator_gate.py \
             --report-dir "$out" --skill xpu-port --self-test --annotate
 
@@ -232,14 +239,16 @@ jobs:
           failed=0
           for skill in $(printf '%s' "$SKILLS_JSON" | jq -r '.[]'); do
             echo "::group::${skill}"
+            # `|| code=$?`, not a bare `code=$?`: under the `bash -e` Actions uses, exit 1
+            # would end the step on the first skill with a verdict.
+            code=0
             skillevaluator validate "skills/${skill}" \
               --external --policy .skillevaluator-policy.yaml \
               --checks "$TIER1_CHECKS" --no-dedup -c \
               --min-score "$MIN_QUALITY_SCORE" \
               --evaluated-source-repository "$REPO" \
               --evaluated-source-revision "$SHA" \
-              -r cli,json,markdown -o "reports/${skill}"
-            code=$?
+              -r cli,json,markdown -o "reports/${skill}" || code=$?
             echo "::endgroup::"
             # 1 is SkillEvaluator's own verdict and the gate below re-derives it with the
             # baseline applied, so it is not a failure here. Anything above 1 is a usage
