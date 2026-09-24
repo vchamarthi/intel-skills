@@ -65,7 +65,7 @@ on:
         type: choice
         options: [anthropic, openai, nv_build, bedrock]
       evaluator_model:
-        description: "Judge model (SKILL_EVAL_LLM_MODEL). Empty = SkillEvaluator's provider default, which can lag the provider's catalog."
+        description: "Judge model (SKILL_EVAL_LLM_MODEL). Empty = the environment variable SKILL_EVAL_LLM_MODEL, else SkillEvaluator's provider default."
         required: false
         default: ""
         type: string
@@ -170,7 +170,9 @@ jobs:
           IN_AWS_BEARER_TOKEN_BEDROCK: ${{ secrets.AWS_BEARER_TOKEN_BEDROCK }}
           IN_AWS_REGION: ${{ secrets.AWS_REGION }}
           PROVIDER: ${{ inputs.evaluator_provider }}
-          EVALUATOR_MODEL: ${{ inputs.evaluator_model }}
+          # A model name is not a credential: a variable, not a secret, so it stays
+          # readable in logs and reports instead of masked as ***.
+          EVALUATOR_MODEL: ${{ inputs.evaluator_model || vars.SKILL_EVAL_LLM_MODEL }}
         run: |
           set -euo pipefail
           for name in ANTHROPIC_API_KEY OPENAI_API_KEY OPENAI_BASE_URL NVIDIA_API_KEY \
