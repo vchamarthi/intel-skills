@@ -137,6 +137,7 @@ Worked example: [`skills/dpnp-quickstart/SKILL.md`](skills/dpnp-quickstart/SKILL
 | `references/` | detail the skill loads on demand, so the body stays short |
 | `scripts/` | helpers the skill runs. Keep them readable; they are instructions too |
 | `evals/evals.json` | cases recording what a correct answer contains |
+| `evals/trigger_eval_set.json` | messages that should and should not make an agent load the skill — `[{"query", "should_trigger"}]`, the format [skill-creator](https://github.com/anthropics/skills/tree/main/skills/skill-creator)'s `run_eval.py` reads |
 | `perf/` | hardware measurements. Three files together — see `templates/perf/` |
 
 None of these is required to merge. They are how a skill earns `validated` later, which is
@@ -197,6 +198,24 @@ text, kept as it arrived, so a file it never mentions by path warns instead of f
 Editing their document to satisfy our validator would break the thing that makes an import
 worth having — that the text has already been used and measured where it was written. The
 content rules do not relax: every file an import ships is scanned like every other.
+
+### Add it to a bundle
+
+[`skills.sh.json`](skills.sh.json) groups the catalog into bundles on this repository's
+[skills.sh](https://skills.sh) page, so a user can pick the skills for one use case
+together. If your skill belongs with others, add its name to that bundle's `skills` list:
+
+```json
+{
+  "title": "Deploy models on Intel GPUs",
+  "description": "...",
+  "skills": ["xpu-system-setup", "xpu-discover", "your-skill-name"]
+}
+```
+
+Removing or renaming a skill means removing or renaming it in its bundle too. The validator
+fails on a bundle that names a skill `skills.yaml` has no entry for. A skill in no bundle is
+reported as `INFO` and never fails.
 
 ## 4. Run the local gate
 
@@ -325,6 +344,8 @@ Blocking, keyless, and runnable on a fork:
   install script, a destructive delete, an instruction aimed at the agent's operator, a
   route for a secret out, or a way to switch a protection off
 - `skills.yaml` has an entry with a maintainer, and the catalog and the tree agree
+- `skills.sh.json` follows the skills.sh schema, and every skill a bundle names has a
+  `skills.yaml` entry
 - the workflows themselves lint clean (`actionlint`, `zizmor`)
 - SkillSpector scores the skill within the threshold its origin is held to — 20 for a skill
   written here, 50 for an imported body — with suppressions and their reasons in
@@ -347,6 +368,9 @@ Blocking, keyless, and runnable on a fork:
 Reported but not blocking:
 
 - the coverage gaps between what a suite claims and what it implements
+- a skill in no bundle in `skills.sh.json`, as `INFO`, never failing even with `--strict`.
+  It is also marked on the pull request when the skill is an import whose upstream's other
+  skills are in a bundle
 - a dead link in a body this repository copied rather than wrote
 - a SkillSpector HIGH/CRITICAL finding in a skill whose score is still within its threshold
 - a pair of skills that drive the same actions with no hand-off written between them — a
