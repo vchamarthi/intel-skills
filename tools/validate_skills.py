@@ -1203,6 +1203,17 @@ def check_bundles(catalog: dict[str, dict[str, str]], report: Report) -> None:
             f"{where}: unknown key {key!r} — the skills.sh schema allows only "
             f"{sorted(BUNDLES_TOP_KEYS)}"
         )
+    # skills.sh types both autocomplete fields as string. A number or a list is
+    # not a URL, and leaving them unchecked made a bad file read as OK.
+    # format: uri is not asserted here.
+    for field in ("$schema", "schema"):
+        if field not in data:
+            continue
+        value = data[field]
+        if not isinstance(value, str):
+            report.error(
+                f"{where}: {field} must be a string, got {type(value).__name__}"
+            )
     not_grouped = data.get("notGrouped", "bottom")
     if not_grouped not in NOT_GROUPED:
         report.error(
