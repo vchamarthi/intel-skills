@@ -1203,6 +1203,17 @@ def check_bundles(catalog: dict[str, dict[str, str]], report: Report) -> None:
             f"{where}: unknown key {key!r} — the skills.sh schema allows only "
             f"{sorted(BUNDLES_TOP_KEYS)}"
         )
+    # skills.sh types both autocomplete fields as string. A number or a list is
+    # not a URL, and leaving them unchecked made a bad file read as OK.
+    # format: uri is not asserted here.
+    for field in ("$schema", "schema"):
+        if field not in data:
+            continue
+        value = data[field]
+        if not isinstance(value, str):
+            report.error(
+                f"{where}: {field} must be a string, got {type(value).__name__}"
+            )
     not_grouped = data.get("notGrouped", "bottom")
     if not_grouped not in NOT_GROUPED:
         report.error(
@@ -1573,10 +1584,58 @@ def check_task_dir(
         )
 
 
+def self_test_bundle_schema_types() -> int:
+    """A non-string skills.sh schema field must fail; a string must not.
+
+    The published skills.sh schema types ``$schema`` and ``schema`` as string.
+    This does not assert ``format: uri``.
+    """
+    import tempfile
+
+    global BUNDLES_PATH
+    saved = BUNDLES_PATH
+    failures: list[str] = []
+    try:
+        live = json.loads(saved.read_text(encoding="utf-8"))
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            good = root / "good.json"
+            good.write_text(json.dumps(live), encoding="utf-8")
+            BUNDLES_PATH = good
+            report = Report()
+            check_bundles({}, report)
+            if any("must be a string" in error for error in report.errors):
+                failures.append("a string $schema was rejected")
+
+            bad_data = dict(live)
+            bad_data["$schema"] = 1
+            bad_data["schema"] = ["not-a-uri"]
+            bad = root / "bad.json"
+            bad.write_text(json.dumps(bad_data), encoding="utf-8")
+            BUNDLES_PATH = bad
+            report = Report()
+            check_bundles({}, report)
+            for field in ("$schema", "schema"):
+                if not any(f"{field} must be a string" in error for error in report.errors):
+                    failures.append(f"non-string {field} was accepted")
+    finally:
+        BUNDLES_PATH = saved
+    if failures:
+        print("FAIL --self-test: " + "; ".join(failures), file=sys.stderr)
+        return 1
+    print("PASS --self-test: non-string skills.sh schema fields are rejected")
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--strict", action="store_true", help="treat warnings as failures"
+    )
+    parser.add_argument(
+        "--self-test",
+        action="store_true",
+        help="assert that a non-string skills.sh $schema or schema field fails",
     )
     parser.add_argument(
         "--check-links",
@@ -1586,6 +1645,8 @@ def main() -> int:
         "warns, and a 404 in an imported body warns because the fix belongs upstream.",
     )
     args = parser.parse_args()
+    if args.self_test:
+        return self_test_bundle_schema_types()
 
     report = Report()
     skill_dirs = sorted(p for p in SKILLS_DIR.iterdir() if p.is_dir())
