@@ -208,6 +208,7 @@ function usage(code = 0) {
   intel-skills show <skill>
   intel-skills install <skill>|--all --target ${Object.keys(INSTALL_TARGETS).join("|")} [--dir <path>] [--force]
   intel-skills verify <skill> --path <installed-skill-dir>
+  intel-skills verify <skill> --target ${Object.keys(INSTALL_TARGETS).join("|")} [--dir <path>]
 
 Every command is a local operation on this checkout: no network, and nothing but node
 is required. \`list\` marks which skills are copies of another repository's work, and
@@ -277,9 +278,13 @@ try {
     }
   } else if (command === "verify") {
     const name = args[0];
-    const dir = argValue(args, "--path");
-    if (!name || !dir) usage(1);
-    verify(name, dir);
+    const target = argValue(args, "--target");
+    const dirOverride = argValue(args, "--dir");
+    const explicit = argValue(args, "--path");
+    // `--target` names the place `install` wrote to, so verify can check it without the
+    // caller spelling out the per-agent directory.
+    if (!name || name.startsWith("--") || (!explicit && !target && !dirOverride)) usage(1);
+    verify(name, explicit ?? path.join(targetRoot(target, dirOverride), name));
   } else {
     usage(1);
   }
