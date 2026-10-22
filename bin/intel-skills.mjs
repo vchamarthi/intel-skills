@@ -230,6 +230,9 @@ try {
     }
   } else if (command === "show") {
     const name = args[0];
+    // Without this, `show` alone reported "invalid skill name: undefined", an error
+    // about a value the user never typed. Every other command prints usage instead.
+    if (!name || name.startsWith("--")) usage(1);
     const src = skillDir(name);
     const origin = source(name);
     if (origin) {
