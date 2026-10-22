@@ -85,7 +85,14 @@ def main() -> int:
         action="store_true",
         help="report errored trials without failing; for exploratory runs only",
     )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="print one JSON verdict (ok, problems, trials) instead of the text report",
+    )
     args = parser.parse_args()
+    # In --json mode the text report is dropped; stdout carries only the verdict.
+    say = (lambda *a, **k: None) if args.json else print
 
     job = load(args.result)
     trials = collect_trials(args.result)
@@ -103,31 +110,39 @@ def main() -> int:
             f"expected {args.expected_trials} trial directories, found {len(trials)}"
         )
 
-    print(f"job     {args.result.parent.name}")
-    print(
+    say(f"job     {args.result.parent.name}")
+    say(
         f"trials  {stats.get('n_completed_trials')} completed, "
         f"{stats.get('n_errored_trials')} errored, "
         f"{stats.get('n_cancelled_trials')} cancelled, "
         f"{stats.get('n_retries')} retries"
     )
-    print(f"floor   reward >= {args.reward_floor}")
-    print()
+    say(f"floor   reward >= {args.reward_floor}")
+    say()
 
+    rows: list[dict] = []
     for trial in trials:
         name = trial.get("task_name") or trial.get("trial_name") or "<unnamed>"
         exception = trial.get("exception_info")
         reward = reward_of(trial)
+        rows.append(
+            {
+                "task": name,
+                "reward": reward,
+                "error": (exception.get("exception_type") or "unknown") if exception else None,
+            }
+        )
 
         if exception:
             kind = exception.get("exception_type") or "unknown"
             line = f"ERROR {name}: {kind}"
-            print(line)
+            say(line)
             if not args.allow_errors:
                 problems.append(f"{name} errored: {kind}")
             continue
 
         if reward is None:
-            print(f"ERROR {name}: verifier reported no '{REWARD_KEY}'")
+            say(f"ERROR {name}: verifier reported no '{REWARD_KEY}'")
             problems.append(
                 f"{name} produced no reward. The verifier must write "
                 f"/logs/verifier/reward.txt or reward.json."
@@ -135,7 +150,7 @@ def main() -> int:
             continue
 
         verdict = "ok   " if reward >= args.reward_floor else "BELOW"
-        print(f"{verdict} {name}: {reward:.3f}")
+        say(f"{verdict} {name}: {reward:.3f}")
         if reward < args.reward_floor:
             problems.append(f"{name} scored {reward:.3f} < {args.reward_floor}")
 
@@ -148,16 +163,19 @@ def main() -> int:
         }
         if extra:
             parts = ", ".join(f"{key}={value}" for key, value in sorted(extra.items()))
-            print(f"        components: {parts}")
+            say(f"        components: {parts}")
 
-    print()
+    say()
+    if args.json:
+        print(json.dumps({"ok": not problems, "problems": problems, "trials": rows}, indent=2))
+        return 1 if problems else 0
     if problems:
-        print(f"FAIL {len(problems)} problem(s):")
+        say(f"FAIL {len(problems)} problem(s):")
         for problem in problems:
-            print(f"  - {problem}")
+            say(f"  - {problem}")
         return 1
 
-    print(f"OK {len(trials)} trial(s) at or above {args.reward_floor}")
+    say(f"OK {len(trials)} trial(s) at or above {args.reward_floor}")
     return 0
 
 
