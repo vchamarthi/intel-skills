@@ -146,6 +146,15 @@ jobs:
       - name: Catalog is listable
         run: node bin/intel-skills.mjs list
 
+      # `show --files` must name exactly what install writes: SKILL.md in, evals/ out.
+      - name: show --files matches what install writes
+        run: |
+          set -euo pipefail
+          node bin/intel-skills.mjs install linux-perf --dir "${RUNNER_TEMP}/showfiles"
+          node bin/intel-skills.mjs show linux-perf --files > "${RUNNER_TEMP}/shown.txt"
+          (cd "${RUNNER_TEMP}/showfiles/linux-perf" && find . -type f | sed 's|^\./||' | LC_ALL=C sort) |
+            diff - "${RUNNER_TEMP}/shown.txt"
+
       # An imported skill, end to end: installed, then verified offline from disk. An
       # import is where the file list is longest and where a copy that dropped
       # something would be least obvious, so it is the single-skill case worth pinning.

@@ -205,7 +205,7 @@ function argValue(args, flag) {
 function usage(code = 0) {
   console.log(`Usage:
   intel-skills list
-  intel-skills show <skill>
+  intel-skills show <skill> [--files]
   intel-skills install <skill>|--all --target ${Object.keys(INSTALL_TARGETS).join("|")} [--dir <path>] [--force]
   intel-skills verify <skill> --path <installed-skill-dir>
 
@@ -231,6 +231,12 @@ try {
   } else if (command === "show") {
     const name = args[0];
     const src = skillDir(name);
+    if (args.includes("--files")) {
+      // The exact set `install` would write, so a reviewer can see what lands on disk
+      // without installing it.
+      for (const rel of files(src)) console.log(rel);
+      process.exit(0);
+    }
     const origin = source(name);
     if (origin) {
       console.log(`upstream:  ${origin.repo}/tree/${origin.commit}/${origin.path}`);
