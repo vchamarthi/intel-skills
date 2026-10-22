@@ -30,10 +30,15 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 from pathlib import Path
 
 REWARD_KEY = "reward"
+
+
+class LoadError(Exception):
+    """A job or trial result.json that cannot be read."""
 
 
 def load(path: Path) -> dict:
@@ -41,9 +46,9 @@ def load(path: Path) -> dict:
         with path.open(encoding="utf-8") as handle:
             return json.load(handle)
     except FileNotFoundError:
-        sys.exit(f"FAIL no such file: {path}")
+        raise LoadError(f"no such file: {path}") from None
     except json.JSONDecodeError as exc:
-        sys.exit(f"FAIL {path} is not valid JSON: {exc}")
+        raise LoadError(f"{path} is not valid JSON: {exc}") from None
 
 
 def collect_trials(job_result: Path) -> list[dict]:
@@ -59,10 +64,16 @@ def collect_trials(job_result: Path) -> list[dict]:
 
 
 def reward_of(trial: dict) -> float | None:
-    """The trial's combined reward, or None when the verifier produced none."""
+    """The trial's combined reward, or None when the verifier produced none.
+
+    NaN and infinity are treated as no reward: they have no meaningful floor
+    comparison and are not representable in standard JSON output.
+    """
     rewards = (trial.get("verifier_result") or {}).get("rewards") or {}
     value = rewards.get(REWARD_KEY)
-    return float(value) if isinstance(value, (int, float)) else None
+    if isinstance(value, (int, float)) and math.isfinite(value):
+        return float(value)
+    return None
 
 
 def main() -> int:
@@ -94,8 +105,14 @@ def main() -> int:
     # In --json mode the text report is dropped; stdout carries only the verdict.
     say = (lambda *a, **k: None) if args.json else print
 
-    job = load(args.result)
-    trials = collect_trials(args.result)
+    try:
+        job = load(args.result)
+        trials = collect_trials(args.result)
+    except LoadError as exc:
+        if args.json:
+            print(json.dumps({"ok": False, "problems": [str(exc)], "trials": []}, indent=2))
+            return 1
+        sys.exit(f"FAIL {exc}")
     stats = job.get("stats") or {}
 
     problems: list[str] = []
