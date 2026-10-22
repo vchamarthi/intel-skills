@@ -146,6 +146,13 @@ jobs:
       - name: Catalog is listable
         run: node bin/intel-skills.mjs list
 
+      - name: Catalog lists as JSON
+        run: |
+          set -euo pipefail
+          node bin/intel-skills.mjs list --json > "${RUNNER_TEMP}/catalog.json"
+          test "$(node -p "JSON.parse(require('fs').readFileSync(process.argv[1])).length" "${RUNNER_TEMP}/catalog.json")" = \
+            "$(node bin/intel-skills.mjs list | wc -l | tr -d ' ')"
+
       # An imported skill, end to end: installed, then verified offline from disk. An
       # import is where the file list is longest and where a copy that dropped
       # something would be least obvious, so it is the single-skill case worth pinning.
