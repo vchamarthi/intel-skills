@@ -202,6 +202,19 @@ function argValue(args, flag) {
   return value;
 }
 
+/**
+ * Refuse an option the command does not take. A misspelt `--forse` used to be dropped
+ * silently, so the command ran with its default and the user never learned the flag
+ * had not applied.
+ */
+function rejectUnknownOptions(args, valueFlags, switches) {
+  for (let i = 0; i < args.length; i += 1) {
+    const arg = args[i];
+    if (valueFlags.includes(arg)) i += 1;
+    else if (arg.startsWith("-") && !switches.includes(arg)) throw new Error(`unknown option: ${arg}`);
+  }
+}
+
 function usage(code = 0) {
   console.log(`Usage:
   intel-skills list
@@ -243,6 +256,10 @@ try {
     }
     console.log(fs.readFileSync(path.join(src, "SKILL.md"), "utf8"));
   } else if (command === "install") {
+    rejectUnknownOptions(args, ["--target", "--dir"], ["--force", "--all"]);
+    if (args.includes("--all") && args.some((arg, i) => !arg.startsWith("-") && !["--target", "--dir"].includes(args[i - 1]))) {
+      throw new Error("--all installs every skill; do not also name one");
+    }
     const target = argValue(args, "--target");
     const dirOverride = argValue(args, "--dir");
     if (!target && !dirOverride) usage(1);
@@ -276,6 +293,7 @@ try {
       install(name, root, force);
     }
   } else if (command === "verify") {
+    rejectUnknownOptions(args, ["--path"], []);
     const name = args[0];
     const dir = argValue(args, "--path");
     if (!name || !dir) usage(1);
