@@ -208,6 +208,7 @@ function usage(code = 0) {
   intel-skills show <skill>
   intel-skills install <skill>|--all --target ${Object.keys(INSTALL_TARGETS).join("|")} [--dir <path>] [--force]
   intel-skills verify <skill> --path <installed-skill-dir>
+  intel-skills --version
 
 Every command is a local operation on this checkout: no network, and nothing but node
 is required. \`list\` marks which skills are copies of another repository's work, and
@@ -219,6 +220,11 @@ const [, , command, ...args] = process.argv;
 
 try {
   if (!command || command === "-h" || command === "--help") usage(0);
+
+  if (command === "--version" || command === "-v") {
+    console.log(JSON.parse(fs.readFileSync(path.join(ROOT, "package.json"), "utf8")).version);
+    process.exit(0);
+  }
 
   if (command === "list") {
     for (const name of catalog()) {
