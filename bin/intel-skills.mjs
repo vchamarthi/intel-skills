@@ -58,6 +58,17 @@ function skillDir(name) {
   return src;
 }
 
+/** A one-line YAML scalar without its surrounding quotes, so `list` shows the text alone. */
+function unquote(value) {
+  if (value.length >= 2 && value.startsWith('"') && value.endsWith('"')) {
+    return value.slice(1, -1).replace(/\\(["\\])/g, "$1");
+  }
+  if (value.length >= 2 && value.startsWith("'") && value.endsWith("'")) {
+    return value.slice(1, -1).replace(/''/g, "'");
+  }
+  return value;
+}
+
 /** The description an agent routes on, read from the frontmatter of SKILL.md. */
 function description(name) {
   const skillMd = path.join(SKILLS_DIR, name, "SKILL.md");
@@ -69,7 +80,7 @@ function description(name) {
   const index = lines.findIndex((line) => /^description:/.test(line));
   if (index === -1) return "";
   const inline = lines[index].replace(/^description:\s*/, "").trim();
-  if (inline && !/^[>|]-?$/.test(inline)) return inline;
+  if (inline && !/^[>|]-?$/.test(inline)) return unquote(inline);
   const block = [];
   for (let i = index + 1; i < lines.length && /^\s{2,}\S|^\s*$/.test(lines[i]); i += 1) {
     block.push(lines[i].trim());
