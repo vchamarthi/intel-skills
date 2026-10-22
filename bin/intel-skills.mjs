@@ -54,7 +54,13 @@ const NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 function skillDir(name) {
   if (!NAME.test(String(name))) throw new Error(`invalid skill name: ${name}`);
   const src = path.join(SKILLS_DIR, name);
-  if (!fs.existsSync(path.join(src, "SKILL.md"))) throw new Error(`skill not found: ${name}`);
+  if (!fs.existsSync(path.join(src, "SKILL.md"))) {
+    // A half-remembered name is the usual cause, so point at the catalog entries that
+    // contain it rather than leave the user to run `list` and scan thirty-odd rows.
+    const similar = catalog().filter((candidate) => candidate.includes(name));
+    const hint = similar.length > 0 ? `; did you mean: ${similar.join(", ")}?` : "";
+    throw new Error(`skill not found: ${name}${hint}`);
+  }
   return src;
 }
 
