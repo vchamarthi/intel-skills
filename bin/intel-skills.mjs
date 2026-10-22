@@ -194,6 +194,26 @@ function verify(name, dir) {
   console.log(`ok ${name} (${wanted.length} file(s) match skills/${name}/)`);
 }
 
+/**
+ * Remove an installed skill from a target root.
+ *
+ * Deliberately narrow: the name must be a catalog-shaped name, the directory must hold a
+ * SKILL.md (so a typo cannot delete an unrelated folder), and it must stay inside the
+ * root. It never touches anything but `<root>/<name>`.
+ */
+function uninstall(name, root) {
+  if (!NAME.test(String(name))) throw new Error(`invalid skill name: ${name}`);
+  const dest = path.join(root, name);
+  if (!path.resolve(dest).startsWith(`${path.resolve(root)}${path.sep}`)) {
+    throw new Error("uninstall path escapes target directory");
+  }
+  if (!fs.existsSync(path.join(dest, "SKILL.md"))) {
+    throw new Error(`not an installed skill: ${dest}`);
+  }
+  fs.rmSync(dest, { recursive: true, force: true });
+  console.log(`removed ${name} from ${dest}`);
+}
+
 function argValue(args, flag) {
   const index = args.indexOf(flag);
   if (index === -1) return null;
@@ -207,6 +227,7 @@ function usage(code = 0) {
   intel-skills list
   intel-skills show <skill>
   intel-skills install <skill>|--all --target ${Object.keys(INSTALL_TARGETS).join("|")} [--dir <path>] [--force]
+  intel-skills uninstall <skill> --target ${Object.keys(INSTALL_TARGETS).join("|")} [--dir <path>]
   intel-skills verify <skill> --path <installed-skill-dir>
 
 Every command is a local operation on this checkout: no network, and nothing but node
@@ -275,6 +296,13 @@ try {
       if (!name || name.startsWith("--")) usage(1);
       install(name, root, force);
     }
+  } else if (command === "uninstall") {
+    const target = argValue(args, "--target");
+    const dirOverride = argValue(args, "--dir");
+    if (!target && !dirOverride) usage(1);
+    const name = args[0];
+    if (!name || name.startsWith("--")) usage(1);
+    uninstall(name, targetRoot(target, dirOverride));
   } else if (command === "verify") {
     const name = args[0];
     const dir = argValue(args, "--path");
