@@ -169,6 +169,14 @@ jobs:
               node bin/intel-skills.mjs verify "${name}" --path "${RUNNER_TEMP}/all/${name}"
             done
 
+      # `--dry-run` promises nothing is written, so a regression that ignores the flag
+      # would install silently. Assert the target directory is still absent.
+      - name: Install --dry-run writes nothing
+        run: |
+          set -euo pipefail
+          node bin/intel-skills.mjs install linux-perf --dir "${RUNNER_TEMP}/dry" --dry-run
+          test ! -e "${RUNNER_TEMP}/dry"
+
       # `verify` noticing is the property the rest rests on, so it is asserted rather
       # than assumed: an installed skill edited after the fact must fail. A regression
       # here is silent — verify keeps printing ok — so only a negative test catches it.
