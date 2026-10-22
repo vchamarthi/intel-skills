@@ -93,6 +93,105 @@ def test_json_malformed_trial_is_structured_failure(tmp_path):
     assert strict_loads(proc.stdout)["ok"] is False
 
 
+def assert_structured_failure(proc, fragment: str):
+    assert proc.returncode == 1
+    assert "Traceback" not in proc.stderr
+    data = strict_loads(proc.stdout)
+    assert data["ok"] is False
+    assert any(fragment in p for p in data["problems"])
+    return data
+
+
+def test_json_non_object_job_is_structured_failure(tmp_path):
+    for index, body in enumerate(("[]", "null", "3")):
+        root = tmp_path / f"job-{index}"
+        root.mkdir()
+        result = make_job(root, {"a": 1.0, "b": 1.0})
+        result.write_text(body, encoding="utf-8")
+        assert_structured_failure(run(result, "--json"), "not a JSON object")
+
+
+def test_json_non_object_trial_is_structured_failure(tmp_path):
+    result = make_job(tmp_path, {"a": 1.0, "b": 1.0})
+    (result.parent / "b__abc" / "result.json").write_text("[1]", encoding="utf-8")
+    assert_structured_failure(run(result, "--json"), "not a JSON object")
+
+
+def test_json_directory_as_job_file_is_structured_failure(tmp_path):
+    result = tmp_path / "result.json"
+    result.mkdir()
+    assert_structured_failure(run(result, "--json"), "cannot read")
+
+
+def test_json_directory_as_trial_file_is_structured_failure(tmp_path):
+    result = make_job(tmp_path, {"a": 1.0, "b": 1.0})
+    trial_file = result.parent / "b__abc" / "result.json"
+    trial_file.unlink()
+    trial_file.mkdir()
+    assert_structured_failure(run(result, "--json"), "cannot read")
+
+
+def test_json_invalid_utf8_is_structured_failure(tmp_path):
+    result = make_job(tmp_path, {"a": 1.0, "b": 1.0})
+    result.write_bytes(b'{"n_total_trials": "\xff\xfe"}')
+    assert_structured_failure(run(result, "--json"), "cannot read")
+
+
+def test_text_mode_non_object_job_fails_without_traceback(tmp_path):
+    result = make_job(tmp_path, {"a": 1.0, "b": 1.0})
+    result.write_text("[]", encoding="utf-8")
+    proc = run(result)
+    assert proc.returncode == 1
+    assert proc.stdout == ""
+    assert "FAIL" in proc.stderr and "Traceback" not in proc.stderr
+
+
+def test_json_wrong_shaped_job_stats_does_not_crash(tmp_path):
+    for index, stats in enumerate(("[]", '"x"', "7", "null")):
+        root = tmp_path / f"stats-{index}"
+        root.mkdir()
+        result = make_job(root, {"a": 1.0, "b": 1.0})
+        result.write_text(
+            '{"n_total_trials": 2, "stats": %s}' % stats, encoding="utf-8"
+        )
+        proc = run(result, "--json")
+        assert proc.returncode == 0, proc.stderr
+        assert strict_loads(proc.stdout)["ok"] is True
+
+
+def test_json_wrong_shaped_trial_fields_do_not_crash(tmp_path):
+    result = make_job(tmp_path, {"a": 1.0, "b": 1.0})
+    (result.parent / "a__abc" / "result.json").write_text(
+        json.dumps({"task_name": 5, "trial_name": ["x"], "verifier_result": []}),
+        encoding="utf-8",
+    )
+    (result.parent / "b__abc" / "result.json").write_text(
+        json.dumps({"task_name": "b", "verifier_result": {"rewards": [1.0]}}),
+        encoding="utf-8",
+    )
+    proc = run(result, "--json")
+    assert proc.returncode == 1
+    assert "Traceback" not in proc.stderr
+    data = strict_loads(proc.stdout)
+    assert [t["reward"] for t in data["trials"]] == [None, None]
+    assert len(data["problems"]) == 2
+
+
+def test_json_wrong_shaped_exception_info_is_an_error(tmp_path):
+    for index, info in enumerate(('"boom"', "[1]", '{"exception_type": 5}')):
+        root = tmp_path / f"exc-{index}"
+        root.mkdir()
+        result = make_job(root, {"a": 1.0, "b": 1.0})
+        (result.parent / "b__abc" / "result.json").write_text(
+            '{"task_name": "b", "exception_info": %s}' % info, encoding="utf-8"
+        )
+        proc = run(result, "--json")
+        assert proc.returncode == 1, info
+        data = strict_loads(proc.stdout)
+        assert data["trials"][1]["error"] == "unknown"
+        assert any("b errored: unknown" in p for p in data["problems"])
+
+
 def test_text_mode_failure_message_unchanged(tmp_path):
     proc = run(tmp_path / "missing.json")
     assert proc.returncode == 1

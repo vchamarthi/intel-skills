@@ -44,11 +44,26 @@ class LoadError(Exception):
 def load(path: Path) -> dict:
     try:
         with path.open(encoding="utf-8") as handle:
-            return json.load(handle)
+            data = json.load(handle)
     except FileNotFoundError:
         raise LoadError(f"no such file: {path}") from None
     except json.JSONDecodeError as exc:
         raise LoadError(f"{path} is not valid JSON: {exc}") from None
+    except (OSError, UnicodeDecodeError) as exc:
+        raise LoadError(f"cannot read {path}: {exc}") from None
+    if not isinstance(data, dict):
+        raise LoadError(f"{path} is not a JSON object")
+    return data
+
+
+def as_dict(value: object) -> dict:
+    """`value` when it is a JSON object, else an empty one (wrong-shaped field)."""
+    return value if isinstance(value, dict) else {}
+
+
+def label(value: object) -> str | None:
+    """`value` when it is a non-empty string, else None (wrong-shaped name)."""
+    return value if isinstance(value, str) and value else None
 
 
 def collect_trials(job_result: Path) -> list[dict]:
@@ -60,7 +75,14 @@ def collect_trials(job_result: Path) -> list[dict]:
     trials = []
     for candidate in sorted(job_result.parent.glob("*/result.json")):
         trials.append(load(candidate))
-    return sorted(trials, key=lambda t: (t.get("task_name") or "", t.get("trial_name") or ""))
+    return sorted(
+        trials,
+        key=lambda t: (label(t.get("task_name")) or "", label(t.get("trial_name")) or ""),
+    )
+
+
+def rewards_of(trial: dict) -> dict:
+    return as_dict(as_dict(trial.get("verifier_result")).get("rewards"))
 
 
 def reward_of(trial: dict) -> float | None:
@@ -69,8 +91,7 @@ def reward_of(trial: dict) -> float | None:
     NaN and infinity are treated as no reward: they have no meaningful floor
     comparison and are not representable in standard JSON output.
     """
-    rewards = (trial.get("verifier_result") or {}).get("rewards") or {}
-    value = rewards.get(REWARD_KEY)
+    value = rewards_of(trial).get(REWARD_KEY)
     if isinstance(value, (int, float)) and math.isfinite(value):
         return float(value)
     return None
@@ -113,7 +134,7 @@ def main() -> int:
             print(json.dumps({"ok": False, "problems": [str(exc)], "trials": []}, indent=2))
             return 1
         sys.exit(f"FAIL {exc}")
-    stats = job.get("stats") or {}
+    stats = as_dict(job.get("stats"))
 
     problems: list[str] = []
     n_reported = job.get("n_total_trials")
@@ -139,19 +160,14 @@ def main() -> int:
 
     rows: list[dict] = []
     for trial in trials:
-        name = trial.get("task_name") or trial.get("trial_name") or "<unnamed>"
+        name = label(trial.get("task_name")) or label(trial.get("trial_name")) or "<unnamed>"
         exception = trial.get("exception_info")
         reward = reward_of(trial)
-        rows.append(
-            {
-                "task": name,
-                "reward": reward,
-                "error": (exception.get("exception_type") or "unknown") if exception else None,
-            }
-        )
+        # Any truthy exception_info marks an error, even a wrong-shaped one.
+        kind = (label(as_dict(exception).get("exception_type")) or "unknown") if exception else None
+        rows.append({"task": name, "reward": reward, "error": kind})
 
         if exception:
-            kind = exception.get("exception_type") or "unknown"
             line = f"ERROR {name}: {kind}"
             say(line)
             if not args.allow_errors:
@@ -175,7 +191,7 @@ def main() -> int:
         # them so a component regression is visible even when the total passes.
         extra = {
             key: value
-            for key, value in ((trial.get("verifier_result") or {}).get("rewards") or {}).items()
+            for key, value in rewards_of(trial).items()
             if key != REWARD_KEY
         }
         if extra:
