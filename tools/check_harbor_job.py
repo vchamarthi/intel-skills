@@ -51,6 +51,11 @@ def load(path: Path) -> dict:
         raise LoadError(f"{path} is not valid JSON: {exc}") from None
     except (OSError, UnicodeDecodeError) as exc:
         raise LoadError(f"cannot read {path}: {exc}") from None
+    except RecursionError:
+        raise LoadError(f"{path} is nested too deeply to parse") from None
+    except ValueError as exc:
+        # The decoder's integer digit limit raises a plain ValueError.
+        raise LoadError(f"{path} cannot be parsed: {exc}") from None
     if not isinstance(data, dict):
         raise LoadError(f"{path} is not a JSON object")
     return data
@@ -89,12 +94,17 @@ def reward_of(trial: dict) -> float | None:
     """The trial's combined reward, or None when the verifier produced none.
 
     NaN and infinity are treated as no reward: they have no meaningful floor
-    comparison and are not representable in standard JSON output.
+    comparison and are not representable in standard JSON output. So is an
+    integer too large to convert to a float.
     """
     value = rewards_of(trial).get(REWARD_KEY)
-    if isinstance(value, (int, float)) and math.isfinite(value):
-        return float(value)
-    return None
+    if not isinstance(value, (int, float)):
+        return None
+    try:
+        number = float(value)
+    except OverflowError:
+        return None
+    return number if math.isfinite(number) else None
 
 
 def main() -> int:

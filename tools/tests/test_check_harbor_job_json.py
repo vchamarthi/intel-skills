@@ -217,6 +217,93 @@ def test_json_non_finite_reward_is_null_and_strict(tmp_path):
     assert data["ok"] is False
 
 
+def write_trial_text(result: Path, text: str) -> None:
+    (result.parent / "b__abc" / "result.json").write_text(text, encoding="utf-8")
+
+
+def test_json_huge_int_reward_is_null_and_strict(tmp_path):
+    result = make_job(tmp_path, {"a": 1.0, "b": 1.0})
+    # 400 digits parse as an int but cannot convert to float.
+    huge = "1" + "0" * 400
+    for sign in ("", "-"):
+        write_trial_text(
+            result,
+            '{"task_name": "b", "verifier_result": {"rewards": {"reward": %s%s}}}'
+            % (sign, huge),
+        )
+        proc = run(result, "--json")
+        assert proc.returncode == 1
+        assert "Traceback" not in proc.stderr
+        data = strict_loads(proc.stdout)
+        assert data["trials"][1]["reward"] is None
+        assert any("b produced no reward" in p for p in data["problems"])
+
+
+def test_text_mode_huge_int_reward_has_no_traceback(tmp_path):
+    result = make_job(tmp_path, {"a": 1.0, "b": 1.0})
+    write_trial_text(
+        result,
+        '{"task_name": "b", "verifier_result": {"rewards": {"reward": 1%s}}}'
+        % ("0" * 400),
+    )
+    proc = run(result)
+    assert proc.returncode == 1
+    assert "Traceback" not in proc.stderr
+    assert "b produced no reward" in proc.stdout
+
+
+def test_json_huge_int_reward_with_allow_errors_still_fails(tmp_path):
+    result = make_job(tmp_path, {"a": 1.0, "b": 1.0})
+    write_trial_text(
+        result,
+        '{"task_name": "b", "verifier_result": {"rewards": {"reward": 1%s}}}'
+        % ("0" * 400),
+    )
+    proc = run(result, "--json", "--allow-errors")
+    assert proc.returncode == 1
+    assert strict_loads(proc.stdout)["trials"][1]["reward"] is None
+
+
+def test_json_over_digit_limit_int_is_structured_failure(tmp_path):
+    result = make_job(tmp_path, {"a": 1.0, "b": 1.0})
+    # Literal text: the decoder's integer digit limit is 4300 digits.
+    write_trial_text(
+        result,
+        '{"task_name": "b", "verifier_result": {"rewards": {"reward": 1%s}}}'
+        % ("0" * 5000),
+    )
+    data = assert_structured_failure(run(result, "--json"), "b__abc")
+    assert data["trials"] == []
+
+
+def test_json_over_digit_limit_int_in_job_is_structured_failure(tmp_path):
+    result = make_job(tmp_path, {"a": 1.0, "b": 1.0})
+    result.write_text('{"n_total_trials": 1%s}' % ("0" * 5000), encoding="utf-8")
+    assert_structured_failure(run(result, "--json"), "result.json")
+
+
+def test_json_deeply_nested_trial_is_structured_failure(tmp_path):
+    result = make_job(tmp_path, {"a": 1.0, "b": 1.0})
+    write_trial_text(result, "[" * 100000 + "]" * 100000)
+    data = assert_structured_failure(run(result, "--json"), "b__abc")
+    assert data["trials"] == []
+
+
+def test_json_deeply_nested_job_is_structured_failure(tmp_path):
+    result = make_job(tmp_path, {"a": 1.0, "b": 1.0})
+    result.write_text('{"stats": ' + "[" * 100000 + "]" * 100000 + "}", encoding="utf-8")
+    assert_structured_failure(run(result, "--json"), "result.json")
+
+
+def test_text_mode_deeply_nested_job_fails_without_traceback(tmp_path):
+    result = make_job(tmp_path, {"a": 1.0, "b": 1.0})
+    result.write_text("[" * 100000, encoding="utf-8")
+    proc = run(result)
+    assert proc.returncode == 1
+    assert proc.stdout == ""
+    assert "FAIL" in proc.stderr and "Traceback" not in proc.stderr
+
+
 def test_allow_errors_tolerates_errored_trial(tmp_path):
     # --allow-errors is for exploratory runs: an errored trial is reported, not failed.
     result = make_job(tmp_path, {"a": 1.0, "b": 1.0})
