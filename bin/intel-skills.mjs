@@ -204,7 +204,7 @@ function argValue(args, flag) {
 
 function usage(code = 0) {
   console.log(`Usage:
-  intel-skills list
+  intel-skills list [--json]
   intel-skills show <skill>
   intel-skills install <skill>|--all --target ${Object.keys(INSTALL_TARGETS).join("|")} [--dir <path>] [--force]
   intel-skills verify <skill> --path <installed-skill-dir>
@@ -220,7 +220,23 @@ const [, , command, ...args] = process.argv;
 try {
   if (!command || command === "-h" || command === "--help") usage(0);
 
-  if (command === "list") {
+  if (command === "list" && args.includes("--json")) {
+    // The tab-separated form truncates the description to 100 characters and is built
+    // for a person; this is the same catalog, whole, for a script that would otherwise
+    // have to split on tabs.
+    const rows = catalog().map((name) => {
+      const origin = source(name);
+      return {
+        name,
+        kind: origin ? "imported" : "own",
+        repo: origin ? origin.repo : null,
+        commit: origin ? String(origin.commit) : null,
+        license: origin ? origin.license ?? null : null,
+        description: description(name),
+      };
+    });
+    console.log(JSON.stringify(rows, null, 2));
+  } else if (command === "list") {
     for (const name of catalog()) {
       const origin = source(name);
       const kind = origin
