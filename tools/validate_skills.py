@@ -209,6 +209,23 @@ REWRITE_NOTE = (
 )
 COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
 
+# The keys a skills.yaml entry may carry, and the values intel-hw-class may take, as
+# the header of skills.yaml documents them. parse_catalog keeps any key it is given, so
+# without this a misspelt `intel-hw-clas` or `intel-product` is read, ignored, and
+# reported as nothing: the field the author meant to set is simply absent.
+CATALOG_KEYS = {
+    "name",
+    "maintainer",
+    "status",
+    "license",
+    "intel-products",
+    "intel-hw-class",
+    "intel-hw-validated-on",
+    "intel-source-ledger",
+    *EXTERNAL_KEYS,
+}
+HW_CLASSES = ("cpu", "gpu", "npu", "accelerator")
+
 NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 DESCRIPTION_MAX = 1024
 LINES_WARN = 250
@@ -851,6 +868,19 @@ def check_catalog(
             )
         if not entry.get("maintainer"):
             report.error(f"skills.yaml: {name}: maintainer is required")
+        for key in sorted(set(entry) - CATALOG_KEYS):
+            report.error(
+                f"skills.yaml: {name}: unknown key {key!r}, which nothing reads — "
+                f"known keys are {sorted(CATALOG_KEYS)}"
+            )
+        # An empty value means "does not apply", per the header, so only a value that
+        # is present has to be one of the classes.
+        hw_class = entry.get("intel-hw-class") or ""
+        if hw_class and hw_class not in HW_CLASSES:
+            report.error(
+                f"skills.yaml: {name}: intel-hw-class must be one of {list(HW_CLASSES)}, "
+                f"got {hw_class!r}"
+            )
 
         has_perf = has_files(skill_dir / "perf")
 

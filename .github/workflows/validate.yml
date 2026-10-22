@@ -43,6 +43,9 @@ jobs:
       - name: Skill structure and catalog
         run: python3 tools/validate_skills.py
 
+      - name: Catalog field checks
+        run: python3 -m unittest discover -s tests
+
       - name: Eval schema
         run: python3 tools/run_evals.py --validate
 
