@@ -49,6 +49,8 @@ const INSTALL_TARGETS = {
  */
 const NOT_INSTALLED = new Set(["evals", "perf"]);
 
+const VALUE_FLAGS = new Set(["--target", "--dir", "--path"]);
+
 const NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 function skillDir(name) {
@@ -202,6 +204,15 @@ function argValue(args, flag) {
   return value;
 }
 
+/** The first argument that is neither a flag nor the value of one, so flags may precede it. */
+function positional(args) {
+  for (let i = 0; i < args.length; i += 1) {
+    if (VALUE_FLAGS.has(args[i])) i += 1;
+    else if (!args[i].startsWith("--")) return args[i];
+  }
+  return null;
+}
+
 function usage(code = 0) {
   console.log(`Usage:
   intel-skills list
@@ -271,12 +282,12 @@ try {
         process.exit(1);
       }
     } else {
-      const name = args[0];
-      if (!name || name.startsWith("--")) usage(1);
+      const name = positional(args);
+      if (!name) usage(1);
       install(name, root, force);
     }
   } else if (command === "verify") {
-    const name = args[0];
+    const name = positional(args);
     const dir = argValue(args, "--path");
     if (!name || !dir) usage(1);
     verify(name, dir);
