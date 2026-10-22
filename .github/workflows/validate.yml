@@ -154,6 +154,8 @@ jobs:
           set -euo pipefail
           node bin/intel-skills.mjs install linux-perf --dir "${RUNNER_TEMP}/skills"
           node bin/intel-skills.mjs verify linux-perf --path "${RUNNER_TEMP}/skills/linux-perf"
+          # `--target` resolves the same directory `install` wrote, here through --dir.
+          node bin/intel-skills.mjs verify linux-perf --dir "${RUNNER_TEMP}/skills"
           test -s "${RUNNER_TEMP}/skills/linux-perf/SKILL.md"
           test -s "${RUNNER_TEMP}/skills/linux-perf/.source.json"
 
