@@ -223,6 +223,7 @@ try {
   if (command === "list") {
     // A mistyped `list --json` used to print the plain catalog and exit 0, which a script
     // then parses as if the flag had been honoured.
+    if (args.includes("-h") || args.includes("--help")) usage(0);
     if (args.length > 0) throw new Error(`list takes no arguments (got ${args[0]})`);
     for (const name of catalog()) {
       const origin = source(name);

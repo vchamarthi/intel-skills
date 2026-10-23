@@ -22,6 +22,11 @@ class ListShowArgsTests(unittest.TestCase):
         self.assertIn("list takes no arguments (got --json)", result.stderr)
         self.assertEqual(result.stdout, "")
 
+    def test_list_help_still_prints_usage(self):
+        result = run("list", "--help")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("Usage:", result.stdout)
+
     def test_list_alone_prints_the_catalog(self):
         result = run("list")
         self.assertEqual(result.returncode, 0, result.stderr)
