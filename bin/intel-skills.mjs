@@ -169,6 +169,8 @@ function verify(name, dir) {
   const src = skillDir(name);
   const installed = path.resolve(dir);
   if (!fs.existsSync(installed)) throw new Error(`no such directory: ${installed}`);
+  // A file here used to surface as a raw "ENOTDIR: not a directory, scandir" from node.
+  if (!fs.statSync(installed).isDirectory()) throw new Error(`not a directory: ${installed}`);
   const digest = (file) => crypto.createHash("sha256").update(fs.readFileSync(file)).digest("hex");
 
   const wanted = files(src);
