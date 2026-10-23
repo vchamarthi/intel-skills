@@ -249,8 +249,11 @@ try {
     const root = targetRoot(target, dirOverride);
     const force = args.includes("--force");
     if (args.includes("--all")) {
-      if (args[0] && !args[0].startsWith("--")) {
-        throw new Error(`install takes a skill name or --all, not both (got ${args[0]} and --all)`);
+      const named = args.find(
+        (arg, i) => !arg.startsWith("--") && !["--target", "--dir"].includes(args[i - 1]),
+      );
+      if (named) {
+        throw new Error(`install takes a skill name or --all, not both (got ${named} and --all)`);
       }
       // One skill's failure must not decide the other thirty-two. Aborting on the
       // first error left an arbitrary prefix of the catalog installed and said nothing

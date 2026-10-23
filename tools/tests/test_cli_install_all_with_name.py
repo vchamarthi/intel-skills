@@ -22,6 +22,13 @@ class InstallAllWithNameTest(unittest.TestCase):
             self.assertIn("not both", result.stderr)
             self.assertEqual(list(Path(tmp).iterdir()), [])
 
+    def test_name_after_flags_is_also_refused(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            result = run("install", "--dir", tmp, "linux-perf", "--all")
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("not both", result.stderr)
+            self.assertEqual(list(Path(tmp).iterdir()), [])
+
     def test_all_alone_still_installs_everything(self):
         with tempfile.TemporaryDirectory() as tmp:
             result = run("install", "--all", "--dir", tmp)
