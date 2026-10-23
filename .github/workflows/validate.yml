@@ -169,6 +169,10 @@ jobs:
               node bin/intel-skills.mjs verify "${name}" --path "${RUNNER_TEMP}/all/${name}"
             done
 
+      # Installer flag behaviour that the round trips above do not exercise.
+      - name: Installer options
+        run: python3 -m unittest discover -s tools/tests -p 'test_*.py'
+
       # `verify` noticing is the property the rest rests on, so it is asserted rather
       # than assumed: an installed skill edited after the fact must fail. A regression
       # here is silent — verify keeps printing ok — so only a negative test catches it.
