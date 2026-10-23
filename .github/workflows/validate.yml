@@ -146,6 +146,11 @@ jobs:
       - name: Catalog is listable
         run: node bin/intel-skills.mjs list
 
+      # The installer's own contract tests: they run the CLI as a subprocess, which is
+      # why they live in this job and not in `validate`.
+      - name: Installer tests
+        run: python3 -m unittest discover tools/tests -p 'test_cli_*.py'
+
       # An imported skill, end to end: installed, then verified offline from disk. An
       # import is where the file list is longest and where a copy that dropped
       # something would be least obvious, so it is the single-skill case worth pinning.

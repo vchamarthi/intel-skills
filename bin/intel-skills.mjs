@@ -165,7 +165,7 @@ function install(name, root, force) {
  * matches the upstream an imported skill was copied from — that needs the network and
  * is `python3 tools/sync_external.py --check`.
  */
-function verify(name, dir) {
+function verify(name, dir, asJson = false) {
   const src = skillDir(name);
   const installed = path.resolve(dir);
   if (!fs.existsSync(installed)) throw new Error(`no such directory: ${installed}`);
@@ -184,6 +184,14 @@ function verify(name, dir) {
   }
   for (const rel of [...present].sort()) {
     problems.push(`${rel} is not part of this skill`);
+  }
+  if (asJson) {
+    // Every problem, not the first four: a script wants the whole list, and the exit
+    // code still says whether the installation matched.
+    console.log(JSON.stringify({ skill: name, path: installed, ok: problems.length === 0, files: wanted.length, problems }));
+    // exitCode rather than exit(): a piped stdout can still be flushing when exit() runs.
+    if (problems.length > 0) process.exitCode = 1;
+    return;
   }
   if (problems.length > 0) {
     throw new Error(
@@ -207,7 +215,7 @@ function usage(code = 0) {
   intel-skills list
   intel-skills show <skill>
   intel-skills install <skill>|--all --target ${Object.keys(INSTALL_TARGETS).join("|")} [--dir <path>] [--force]
-  intel-skills verify <skill> --path <installed-skill-dir>
+  intel-skills verify <skill> --path <installed-skill-dir> [--json]
 
 Every command is a local operation on this checkout: no network, and nothing but node
 is required. \`list\` marks which skills are copies of another repository's work, and
@@ -278,12 +286,22 @@ try {
   } else if (command === "verify") {
     const name = args[0];
     const dir = argValue(args, "--path");
+    const asJson = args.includes("--json");
+    if ((!name || !dir) && asJson) {
+      // Usage text on stdout would follow the object and make the stream unparseable.
+      throw new Error("verify needs a skill name and --path");
+    }
     if (!name || !dir) usage(1);
-    verify(name, dir);
+    verify(name, dir, asJson);
   } else {
     usage(1);
   }
 } catch (error) {
   console.error(`error: ${error.message}`);
-  process.exit(1);
+  // A script that asked for JSON parses stdout, so a failure before the comparison
+  // (unknown skill, missing directory) gets an object too, not an empty stream.
+  if (command === "verify" && args.includes("--json")) {
+    console.log(JSON.stringify({ ok: false, error: error.message }));
+  }
+  process.exitCode = 1;
 }
