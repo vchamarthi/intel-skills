@@ -110,11 +110,12 @@ function files(dir) {
 }
 
 function targetRoot(target, dirOverride) {
-  if (dirOverride) return path.resolve(dirOverride);
   const segments = Object.hasOwn(INSTALL_TARGETS, target) ? INSTALL_TARGETS[target] : null;
-  if (!segments) {
+  // A misspelt --target is an error even when --dir wins, so a typo is not silently ignored.
+  if (!segments && (target || !dirOverride)) {
     throw new Error(`unknown target: ${target} (expected one of ${Object.keys(INSTALL_TARGETS).join(", ")})`);
   }
+  if (dirOverride) return path.resolve(dirOverride);
   return path.join(os.homedir(), ...segments);
 }
 
