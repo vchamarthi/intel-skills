@@ -204,7 +204,7 @@ function argValue(args, flag) {
 
 function usage(code = 0) {
   console.log(`Usage:
-  intel-skills list [--from <upstream-repo>]
+  intel-skills list [--from <upstream-repo-name>]
   intel-skills show <skill>
   intel-skills install <skill>|--all --target ${Object.keys(INSTALL_TARGETS).join("|")} [--dir <path>] [--force]
   intel-skills verify <skill> --path <installed-skill-dir>
