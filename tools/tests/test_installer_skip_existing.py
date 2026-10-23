@@ -21,7 +21,12 @@ class SkipExistingTest(unittest.TestCase):
             result = run("install", "--all", "--dir", tmp, "--skip-existing")
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertIn(f"skipped {SKILL}", result.stdout)
-            self.assertIn("installed to", result.stdout)
+            total = len(run("list").stdout.splitlines())
+            self.assertIn(f"{total - 1}/{total} installed to", result.stdout)
+            self.assertIn("(1 skipped)", result.stdout)
+            self.assertTrue((Path(tmp) / "linux-perf" / "SKILL.md").exists())
+            installed = [p for p in Path(tmp).iterdir() if p.is_dir()]
+            self.assertEqual(len(installed), total)
 
     def test_single_skill_is_skipped_not_overwritten(self):
         with tempfile.TemporaryDirectory() as tmp:
