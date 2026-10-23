@@ -31,6 +31,19 @@ class InstallQuietTest(unittest.TestCase):
                 self.assertEqual(result.stdout, "")
                 self.assertTrue((Path(tmp) / name / "SKILL.md").is_file())
 
+    def test_name_may_follow_other_options(self):
+        name = sorted(p.parent.name for p in (ROOT / "skills").glob("*/SKILL.md"))[0]
+        with tempfile.TemporaryDirectory() as tmp:
+            result = run("install", "-q", "--dir", tmp, name)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertTrue((Path(tmp) / name / "SKILL.md").is_file())
+
+    def test_missing_name_prints_usage(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            result = run("install", "-q", "--dir", tmp)
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("Usage:", result.stdout)
+
     def test_all_keeps_only_the_summary(self):
         with tempfile.TemporaryDirectory() as tmp:
             result = run("install", "--all", "--dir", tmp, "-q")
