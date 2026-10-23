@@ -221,6 +221,8 @@ try {
   if (!command || command === "-h" || command === "--help") usage(0);
 
   if (command === "list") {
+    const unknown = args.find((arg) => arg !== "--imported" && arg !== "--own");
+    if (unknown) throw new Error(`unknown option for list: ${unknown}`);
     const imported = args.includes("--imported");
     const own = args.includes("--own");
     if (imported && own) throw new Error("--imported and --own cannot be combined");

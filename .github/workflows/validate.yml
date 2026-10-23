@@ -153,8 +153,9 @@ jobs:
           imported=$(node bin/intel-skills.mjs list --imported | wc -l)
           own=$(node bin/intel-skills.mjs list --own | wc -l)
           test "$((imported + own))" -eq "${all}"
-          node bin/intel-skills.mjs list --imported | cut -f2 | grep -qx imported
-          ! node bin/intel-skills.mjs list --imported --own
+          node bin/intel-skills.mjs list --imported | cut -f2 | grep -x imported > /dev/null
+          if node bin/intel-skills.mjs list --imported --own; then exit 1; fi
+          if node bin/intel-skills.mjs list --bogus; then exit 1; fi
 
       # An imported skill, end to end: installed, then verified offline from disk. An
       # import is where the file list is longest and where a copy that dropped
