@@ -1,10 +1,8 @@
 """`--help` after any installer subcommand prints usage and exits 0."""
 
 import subprocess
-import sys
+import unittest
 from pathlib import Path
-
-import pytest
 
 CLI = Path(__file__).resolve().parents[2] / "bin" / "intel-skills.mjs"
 
@@ -15,28 +13,26 @@ def run(*args: str) -> subprocess.CompletedProcess[str]:
     )
 
 
-@pytest.mark.parametrize(
-    "args",
-    [
-        ("install", "--help"),
-        ("install", "-h"),
-        ("verify", "--help"),
-        ("show", "--help"),
-        ("list", "--help"),
-    ],
-)
-def test_subcommand_help_prints_usage(args: tuple[str, ...]) -> None:
-    result = run(*args)
-    assert result.returncode == 0, result.stderr
-    assert result.stdout.startswith("Usage:")
-    assert "invalid skill name" not in result.stderr
+class SubcommandHelpTest(unittest.TestCase):
+    def test_subcommand_help_prints_usage(self) -> None:
+        for args in (
+            ("install", "--help"),
+            ("install", "-h"),
+            ("verify", "--help"),
+            ("show", "--help"),
+            ("list", "--help"),
+        ):
+            with self.subTest(args=args):
+                result = run(*args)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertTrue(result.stdout.startswith("Usage:"))
+                self.assertNotIn("invalid skill name", result.stderr)
 
-
-def test_list_still_lists_without_help() -> None:
-    result = run("list")
-    assert result.returncode == 0
-    assert "Usage:" not in result.stdout
+    def test_list_still_lists_without_help(self) -> None:
+        result = run("list")
+        self.assertEqual(result.returncode, 0)
+        self.assertNotIn("Usage:", result.stdout)
 
 
 if __name__ == "__main__":
-    sys.exit(pytest.main([__file__]))
+    unittest.main()
