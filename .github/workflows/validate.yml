@@ -186,3 +186,8 @@ jobs:
             echo "::error::verify accepted a file no skill in the catalog ships"
             exit 1
           fi
+
+      # Argument handling the steps above never reach, such as `verify --path` on a file.
+      # Stdlib unittest, so nothing is installed; the tests skip themselves without node.
+      - name: CLI argument tests
+        run: python3 -m unittest discover -s tools/tests -p 'test_cli_*.py'
