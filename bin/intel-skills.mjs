@@ -49,6 +49,9 @@ const INSTALL_TARGETS = {
  */
 const NOT_INSTALLED = new Set(["evals", "perf"]);
 
+/** The licence of every skill written in this repository (`skills.yaml` defaults to it). */
+const REPO_LICENSE = "Apache-2.0";
+
 const NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 function skillDir(name) {
@@ -205,7 +208,7 @@ function argValue(args, flag) {
 function usage(code = 0) {
   console.log(`Usage:
   intel-skills list
-  intel-skills show <skill>
+  intel-skills show <skill> [--license]
   intel-skills install <skill>|--all --target ${Object.keys(INSTALL_TARGETS).join("|")} [--dir <path>] [--force]
   intel-skills verify <skill> --path <installed-skill-dir>
 
@@ -229,19 +232,25 @@ try {
       console.log(`${name}\t${kind}\t${description(name).slice(0, 100)}`);
     }
   } else if (command === "show") {
-    const name = args[0];
+    const licenseOnly = args.includes("--license");
+    const name = args.find((arg) => !arg.startsWith("--"));
     const src = skillDir(name);
     const origin = source(name);
-    if (origin) {
-      console.log(`upstream:  ${origin.repo}/tree/${origin.commit}/${origin.path}`);
-      console.log(`pinned:    ${origin.commit}`);
-      console.log(`license:   ${origin.license}`);
-      if (origin["modified-files"]) {
-        console.log(`modified:  ${origin["modified-files"].join(", ")}`);
+    if (licenseOnly) {
+      // A skill written here carries the repository's own licence; a copy carries upstream's.
+      console.log(origin ? origin.license : REPO_LICENSE);
+    } else {
+      if (origin) {
+        console.log(`upstream:  ${origin.repo}/tree/${origin.commit}/${origin.path}`);
+        console.log(`pinned:    ${origin.commit}`);
+        console.log(`license:   ${origin.license}`);
+        if (origin["modified-files"]) {
+          console.log(`modified:  ${origin["modified-files"].join(", ")}`);
+        }
+        console.log("");
       }
-      console.log("");
+      console.log(fs.readFileSync(path.join(src, "SKILL.md"), "utf8"));
     }
-    console.log(fs.readFileSync(path.join(src, "SKILL.md"), "utf8"));
   } else if (command === "install") {
     const target = argValue(args, "--target");
     const dirOverride = argValue(args, "--dir");
