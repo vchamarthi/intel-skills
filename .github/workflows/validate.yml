@@ -168,6 +168,13 @@ jobs:
             while read -r name; do
               node bin/intel-skills.mjs verify "${name}" --path "${RUNNER_TEMP}/all/${name}"
             done
+          # The same check in one call, and it must fail when one skill is altered.
+          node bin/intel-skills.mjs verify --all --path "${RUNNER_TEMP}/all"
+          echo "altered" >> "${RUNNER_TEMP}/all/linux-perf/SKILL.md"
+          if node bin/intel-skills.mjs verify --all --path "${RUNNER_TEMP}/all"; then
+            echo "::error::verify --all accepted an installed skill that differs from the catalog"
+            exit 1
+          fi
 
       # `verify` noticing is the property the rest rests on, so it is asserted rather
       # than assumed: an installed skill edited after the fact must fail. A regression
