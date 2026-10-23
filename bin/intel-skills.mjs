@@ -232,11 +232,7 @@ try {
     const descriptionOnly = args.includes("--description");
     const name = args.find((arg) => !arg.startsWith("--"));
     const src = skillDir(name);
-    if (descriptionOnly) {
-      console.log(description(name));
-      process.exit(0);
-    }
-    const origin = source(name);
+    const origin = descriptionOnly ? null : source(name);
     if (origin) {
       console.log(`upstream:  ${origin.repo}/tree/${origin.commit}/${origin.path}`);
       console.log(`pinned:    ${origin.commit}`);
@@ -246,7 +242,7 @@ try {
       }
       console.log("");
     }
-    console.log(fs.readFileSync(path.join(src, "SKILL.md"), "utf8"));
+    console.log(descriptionOnly ? description(name) : fs.readFileSync(path.join(src, "SKILL.md"), "utf8"));
   } else if (command === "install") {
     const target = argValue(args, "--target");
     const dirOverride = argValue(args, "--dir");

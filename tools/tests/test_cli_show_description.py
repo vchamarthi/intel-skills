@@ -18,13 +18,14 @@ class ShowDescriptionTest(unittest.TestCase):
     def test_description_matches_list_column(self):
         listed = run("list")
         self.assertEqual(listed.returncode, 0)
-        name, _, _, short = listed.stdout.splitlines()[0].split("\t")
-        shown = run("show", name, "--description")
-        self.assertEqual(shown.returncode, 0, shown.stderr)
-        text = shown.stdout.strip()
-        self.assertTrue(text.startswith(short.rstrip(".")[:40]))
-        self.assertNotIn("\n", text)
-        self.assertNotIn("---", text)
+        for line in listed.stdout.splitlines():
+            name, _, _, short = line.split("\t")
+            shown = run("show", name, "--description")
+            self.assertEqual(shown.returncode, 0, shown.stderr)
+            text = shown.stdout.strip()
+            self.assertTrue(short, name)
+            self.assertTrue(text.startswith(short), name)
+            self.assertNotIn("\n", text, name)
 
     def test_flag_before_name(self):
         name = run("list").stdout.splitlines()[0].split("\t")[0]
