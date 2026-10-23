@@ -136,8 +136,12 @@ function destinationFor(root, name, force) {
  * `scripts/check_runtime_preflight.sh` ships it executable, and a copy that dropped
  * the bit would fail on the first command the skill documents.
  */
-function install(name, root, force) {
+function install(name, root, force, skipExisting = false) {
   const src = skillDir(name);
+  if (skipExisting && fs.existsSync(path.join(root, name))) {
+    console.log(`skipped ${name} (already in ${root}; contents not checked, see verify)`);
+    return false;
+  }
   const dest = destinationFor(root, name, force);
   fs.mkdirSync(root, { recursive: true });
   fs.rmSync(dest, { recursive: true, force: true });
@@ -154,6 +158,7 @@ function install(name, root, force) {
     ? `${origin.repo} @ ${String(origin.commit).slice(0, 12)}, ${origin.license}`
     : "maintained in this repository";
   console.log(`installed ${name} -> ${dest} (${listed.length} file(s), ${provenance})`);
+  return true;
 }
 
 /**
@@ -206,7 +211,7 @@ function usage(code = 0) {
   console.log(`Usage:
   intel-skills list
   intel-skills show <skill>
-  intel-skills install <skill>|--all --target ${Object.keys(INSTALL_TARGETS).join("|")} [--dir <path>] [--force]
+  intel-skills install <skill>|--all --target ${Object.keys(INSTALL_TARGETS).join("|")} [--dir <path>] [--force|--skip-existing]
   intel-skills verify <skill> --path <installed-skill-dir>
 
 Every command is a local operation on this checkout: no network, and nothing but node
@@ -248,6 +253,8 @@ try {
     if (!target && !dirOverride) usage(1);
     const root = targetRoot(target, dirOverride);
     const force = args.includes("--force");
+    const skipExisting = args.includes("--skip-existing");
+    if (force && skipExisting) throw new Error("--force and --skip-existing cannot be combined");
     if (args.includes("--all")) {
       // One skill's failure must not decide the other thirty-two. Aborting on the
       // first error left an arbitrary prefix of the catalog installed and said nothing
@@ -256,15 +263,19 @@ try {
       // still says the run did not fully succeed.
       const names = catalog();
       const failures = [];
+      let skipped = 0;
       for (const name of names) {
         try {
-          install(name, root, force);
+          if (!install(name, root, force, skipExisting)) skipped += 1;
         } catch (error) {
           failures.push(`${name}: ${error.message}`);
           console.error(`error: ${name}: ${error.message}`);
         }
       }
-      console.log(`${names.length - failures.length}/${names.length} installed to ${root}`);
+      const done = names.length - failures.length - skipped;
+      console.log(
+        `${done}/${names.length} installed to ${root}` + (skipped ? ` (${skipped} skipped)` : ""),
+      );
       if (failures.length > 0) {
         console.error(`${failures.length} skill(s) not installed:`);
         for (const failure of failures) console.error(`  ${failure}`);
@@ -273,7 +284,7 @@ try {
     } else {
       const name = args[0];
       if (!name || name.startsWith("--")) usage(1);
-      install(name, root, force);
+      install(name, root, force, skipExisting);
     }
   } else if (command === "verify") {
     const name = args[0];
