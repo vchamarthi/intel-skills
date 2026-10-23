@@ -109,6 +109,30 @@ function files(dir) {
   return walk(dir).sort();
 }
 
+const HW_CLASSES = ["cpu", "gpu", "npu", "accelerator"];
+
+/** name -> `intel-hw-class` from skills.yaml; a skill that declares none is absent. */
+function hwClasses() {
+  const classes = new Map();
+  let name = null;
+  for (const line of fs.readFileSync(path.join(ROOT, "skills.yaml"), "utf8").split(/\r?\n/)) {
+    const entry = /^- name:\s*"?([^"\s]+)"?/.exec(line);
+    if (entry) {
+      name = entry[1];
+      continue;
+    }
+    const hw = /^\s+intel-hw-class:\s*"?([a-z]+)"?/.exec(line);
+    if (hw && name) classes.set(name, hw[1]);
+  }
+  return classes;
+}
+
+/** The value of `--flag value` or `--flag=value`, or null when the flag is absent. */
+function optionValue(args, flag) {
+  const joined = args.find((arg) => arg.startsWith(`${flag}=`));
+  return joined ? joined.slice(flag.length + 1) : argValue(args, flag);
+}
+
 function targetRoot(target, dirOverride) {
   if (dirOverride) return path.resolve(dirOverride);
   const segments = Object.hasOwn(INSTALL_TARGETS, target) ? INSTALL_TARGETS[target] : null;
@@ -204,7 +228,7 @@ function argValue(args, flag) {
 
 function usage(code = 0) {
   console.log(`Usage:
-  intel-skills list
+  intel-skills list [--class ${HW_CLASSES.join("|")}]
   intel-skills show <skill>
   intel-skills install <skill>|--all --target ${Object.keys(INSTALL_TARGETS).join("|")} [--dir <path>] [--force]
   intel-skills verify <skill> --path <installed-skill-dir>
@@ -221,7 +245,13 @@ try {
   if (!command || command === "-h" || command === "--help") usage(0);
 
   if (command === "list") {
+    const wanted = optionValue(args, "--class");
+    if (wanted !== null && !HW_CLASSES.includes(wanted)) {
+      throw new Error(`unknown class: ${wanted} (expected one of ${HW_CLASSES.join(", ")})`);
+    }
+    const classes = wanted === null ? null : hwClasses();
     for (const name of catalog()) {
+      if (classes && classes.get(name) !== wanted) continue;
       const origin = source(name);
       const kind = origin
         ? `imported\t${origin.repo.split("/").slice(-1)[0]}@${String(origin.commit).slice(0, 12)}`
