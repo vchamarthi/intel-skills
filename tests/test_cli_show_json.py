@@ -28,6 +28,12 @@ def test_show_json_flag_may_come_first():
     assert json.loads(result.stdout)["name"] == "linux-perf"
 
 
+def test_show_rejects_unknown_options_and_extra_names():
+    assert run("show", "linux-perf", "--jsno").returncode == 1
+    assert run("show", "linux-perf", "dpnp-quickstart").returncode == 1
+    assert run("show", "--json").returncode == 1
+
+
 def test_show_without_json_still_prints_the_skill_body():
     result = run("show", "linux-perf")
     assert result.returncode == 0, result.stderr

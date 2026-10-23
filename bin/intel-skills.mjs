@@ -229,7 +229,11 @@ try {
       console.log(`${name}\t${kind}\t${description(name).slice(0, 100)}`);
     }
   } else if (command === "show") {
-    const name = args.find((arg) => !arg.startsWith("--"));
+    const unknown = args.find((arg) => arg.startsWith("--") && arg !== "--json");
+    if (unknown) throw new Error(`unknown option for show: ${unknown}`);
+    const names = args.filter((arg) => !arg.startsWith("--"));
+    if (names.length !== 1) usage(1);
+    const name = names[0];
     const src = skillDir(name);
     const origin = source(name);
     if (args.includes("--json")) {

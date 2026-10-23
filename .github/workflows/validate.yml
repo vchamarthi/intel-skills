@@ -157,6 +157,18 @@ jobs:
           test -s "${RUNNER_TEMP}/skills/linux-perf/SKILL.md"
           test -s "${RUNNER_TEMP}/skills/linux-perf/.source.json"
 
+      # `show --json` is what a script reads instead of scraping the SKILL.md dump, and
+      # a typo in the flag must fail rather than fall back to the human-readable text.
+      - name: Show prints machine-readable JSON
+        run: |
+          set -euo pipefail
+          node bin/intel-skills.mjs show --json linux-perf |
+            python3 -c 'import json, sys; d = json.load(sys.stdin); assert d["name"] == "linux-perf" and "SKILL.md" in d["files"]'
+          if node bin/intel-skills.mjs show linux-perf --jsno; then
+            echo "::error::show accepted an unknown option"
+            exit 1
+          fi
+
       # The whole catalog, every entry verified. `--all` has no per-skill failure mode
       # left to tolerate now that install is a local copy, which is the point: the run
       # either writes 33 skills or names the one it could not.
