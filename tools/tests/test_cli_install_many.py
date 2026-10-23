@@ -37,8 +37,9 @@ class InstallManyTest(unittest.TestCase):
         self.assertIn("1/2 installed", result.stdout)
 
     def test_a_repeated_name_is_installed_once(self):
-        result = run("install", NAMES[0], NAMES[0], "--dir", str(self.dir))
+        result = run("install", NAMES[0], NAMES[0], "--force", "--dir", str(self.dir))
         self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.count(f"installed {NAMES[0]} ->"), 1)
 
     def test_a_single_name_still_works(self):
         result = run("install", NAMES[0], "--dir", str(self.dir))

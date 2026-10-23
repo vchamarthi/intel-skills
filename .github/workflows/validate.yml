@@ -182,6 +182,13 @@ jobs:
             exit 1
           fi
           test -s "${RUNNER_TEMP}/partial/linux-perf/SKILL.md"
+          # A repeated name is one install, so it must not trip "destination already exists".
+          node bin/intel-skills.mjs install linux-perf linux-perf --dir "${RUNNER_TEMP}/twice" |
+            grep -q '^installed linux-perf '
+          test "$(find "${RUNNER_TEMP}/twice" -maxdepth 1 -mindepth 1 | wc -l)" -eq 1
+
+      - name: Installer unit tests
+        run: python3 -m unittest discover -s tools/tests -p 'test_*.py'
 
       # `verify` noticing is the property the rest rests on, so it is asserted rather
       # than assumed: an installed skill edited after the fact must fail. A regression
