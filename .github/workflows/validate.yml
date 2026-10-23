@@ -146,6 +146,9 @@ jobs:
       - name: Catalog is listable
         run: node bin/intel-skills.mjs list
 
+      - name: Installer CLI tests
+        run: python3 -m unittest discover tools/tests
+
       # An imported skill, end to end: installed, then verified offline from disk. An
       # import is where the file list is longest and where a copy that dropped
       # something would be least obvious, so it is the single-skill case worth pinning.
