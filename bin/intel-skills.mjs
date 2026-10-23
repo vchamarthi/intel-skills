@@ -286,8 +286,13 @@ try {
   } else if (command === "verify") {
     const name = args[0];
     const dir = argValue(args, "--path");
+    const asJson = args.includes("--json");
+    if ((!name || !dir) && asJson) {
+      // Usage text on stdout would follow the object and make the stream unparseable.
+      throw new Error("verify needs a skill name and --path");
+    }
     if (!name || !dir) usage(1);
-    verify(name, dir, args.includes("--json"));
+    verify(name, dir, asJson);
   } else {
     usage(1);
   }
