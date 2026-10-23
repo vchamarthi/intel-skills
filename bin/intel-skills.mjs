@@ -189,7 +189,8 @@ function verify(name, dir, asJson = false) {
     // Every problem, not the first four: a script wants the whole list, and the exit
     // code still says whether the installation matched.
     console.log(JSON.stringify({ skill: name, path: installed, ok: problems.length === 0, files: wanted.length, problems }));
-    if (problems.length > 0) process.exit(1);
+    // exitCode rather than exit(): a piped stdout can still be flushing when exit() runs.
+    if (problems.length > 0) process.exitCode = 1;
     return;
   }
   if (problems.length > 0) {
