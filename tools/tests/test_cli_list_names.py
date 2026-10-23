@@ -1,6 +1,7 @@
 """`intel-skills list --names` prints bare skill names, one per line."""
 
 import subprocess
+import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -13,11 +14,17 @@ def run(*args):
     )
 
 
-def test_names_matches_first_column_of_list():
-    table = run("list")
-    names = run("list", "--names")
-    assert table.returncode == 0 and names.returncode == 0
-    expected = [line.split("\t")[0] for line in table.stdout.splitlines()]
-    assert names.stdout.splitlines() == expected
-    assert "\t" not in names.stdout
-    assert len(expected) > 0
+class ListNamesTest(unittest.TestCase):
+    def test_names_matches_first_column_of_list(self):
+        table = run("list")
+        names = run("list", "--names")
+        self.assertEqual(table.returncode, 0)
+        self.assertEqual(names.returncode, 0)
+        expected = [line.split("\t")[0] for line in table.stdout.splitlines()]
+        self.assertTrue(expected)
+        self.assertEqual(names.stdout.splitlines(), expected)
+        self.assertNotIn("\t", names.stdout)
+
+
+if __name__ == "__main__":
+    unittest.main()
