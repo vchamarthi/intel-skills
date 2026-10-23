@@ -168,6 +168,10 @@ jobs:
             while read -r name; do
               node bin/intel-skills.mjs verify "${name}" --path "${RUNNER_TEMP}/all/${name}"
             done
+          # `installed` must see exactly what `list` says was written.
+          expected="$(node bin/intel-skills.mjs list | wc -l)"
+          node bin/intel-skills.mjs installed --dir "${RUNNER_TEMP}/all" | tail -n 1 |
+            grep -q "^${expected} skill(s) in "
 
       # `verify` noticing is the property the rest rests on, so it is asserted rather
       # than assumed: an installed skill edited after the fact must fail. A regression
