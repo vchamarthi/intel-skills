@@ -194,6 +194,15 @@ function verify(name, dir) {
   console.log(`ok ${name} (${wanted.length} file(s) match skills/${name}/)`);
 }
 
+/** One tab-separated catalog line: name, own or imported, description. */
+function listRow(name) {
+  const origin = source(name);
+  const kind = origin
+    ? `imported\t${origin.repo.split("/").slice(-1)[0]}@${String(origin.commit).slice(0, 12)}`
+    : "own\t-";
+  return `${name}\t${kind}\t${description(name).slice(0, 100)}`;
+}
+
 function argValue(args, flag) {
   const index = args.indexOf(flag);
   if (index === -1) return null;
@@ -205,6 +214,7 @@ function argValue(args, flag) {
 function usage(code = 0) {
   console.log(`Usage:
   intel-skills list
+  intel-skills search <word>...
   intel-skills show <skill>
   intel-skills install <skill>|--all --target ${Object.keys(INSTALL_TARGETS).join("|")} [--dir <path>] [--force]
   intel-skills verify <skill> --path <installed-skill-dir>
@@ -221,13 +231,18 @@ try {
   if (!command || command === "-h" || command === "--help") usage(0);
 
   if (command === "list") {
-    for (const name of catalog()) {
-      const origin = source(name);
-      const kind = origin
-        ? `imported\t${origin.repo.split("/").slice(-1)[0]}@${String(origin.commit).slice(0, 12)}`
-        : "own\t-";
-      console.log(`${name}\t${kind}\t${description(name).slice(0, 100)}`);
-    }
+    for (const name of catalog()) console.log(listRow(name));
+  } else if (command === "search") {
+    const words = args.map((word) => word.toLowerCase());
+    if (words.length === 0) usage(1);
+    // Every word must appear in the name or the full description, so a second word
+    // narrows the result instead of widening it.
+    const hits = catalog().filter((name) => {
+      const haystack = `${name} ${description(name)}`.toLowerCase();
+      return words.every((word) => haystack.includes(word));
+    });
+    if (hits.length === 0) throw new Error(`no skill matches: ${args.join(" ")}`);
+    for (const name of hits) console.log(listRow(name));
   } else if (command === "show") {
     const name = args[0];
     const src = skillDir(name);

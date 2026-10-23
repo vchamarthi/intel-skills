@@ -146,6 +146,15 @@ jobs:
       - name: Catalog is listable
         run: node bin/intel-skills.mjs list
 
+      - name: Catalog is searchable
+        run: |
+          set -euo pipefail
+          node bin/intel-skills.mjs search LINUX perf | cut -f1 | grep -x linux-perf
+          if node bin/intel-skills.mjs search no-such-skill-word; then
+            echo "::error::search succeeded with no matching skill"
+            exit 1
+          fi
+
       # An imported skill, end to end: installed, then verified offline from disk. An
       # import is where the file list is longest and where a copy that dropped
       # something would be least obvious, so it is the single-skill case worth pinning.
