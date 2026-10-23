@@ -219,6 +219,9 @@ const [, , command, ...args] = process.argv;
 
 try {
   if (!command || command === "-h" || command === "--help") usage(0);
+  // `install --help` is what a user types to learn the flags; without this it fell through
+  // to "invalid skill name: --help" or an exit-1 usage, and `list --help` printed the catalog.
+  if (args.includes("-h") || args.includes("--help")) usage(0);
 
   if (command === "list") {
     for (const name of catalog()) {
