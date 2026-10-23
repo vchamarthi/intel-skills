@@ -104,6 +104,7 @@ for the case where what matters is that the bytes are exactly the ones a reviewe
 
 ```bash
 npx github:intel/skills list                                     # the catalog, and which kind
+npx github:intel/skills search vllm gpu                          # skills whose name or description has every word
 npx github:intel/skills install linux-perf --target claude-code  # -> ~/.claude/skills
 npx github:intel/skills install --all --target agents            # -> ~/.agents/skills
 npx github:intel/skills install xpu-port --dir .agents/skills    # into a project, to commit
