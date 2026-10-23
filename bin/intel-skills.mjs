@@ -221,7 +221,11 @@ try {
   if (!command || command === "-h" || command === "--help") usage(0);
   // `install --help` is what a user types to learn the flags; without this it fell through
   // to "invalid skill name: --help" or an exit-1 usage, and `list --help` printed the catalog.
-  if (args.includes("-h") || args.includes("--help")) usage(0);
+  // A flag's value is never a help request, so `--dir -h` still means a directory named -h.
+  const VALUE_FLAGS = ["--target", "--dir", "--path"];
+  if (args.some((arg, i) => (arg === "-h" || arg === "--help") && !VALUE_FLAGS.includes(args[i - 1]))) {
+    usage(0);
+  }
 
   if (command === "list") {
     for (const name of catalog()) {
