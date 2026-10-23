@@ -136,7 +136,7 @@ function destinationFor(root, name, force) {
  * `scripts/check_runtime_preflight.sh` ships it executable, and a copy that dropped
  * the bit would fail on the first command the skill documents.
  */
-function install(name, root, force) {
+function install(name, root, force, quiet = false) {
   const src = skillDir(name);
   const dest = destinationFor(root, name, force);
   fs.mkdirSync(root, { recursive: true });
@@ -153,7 +153,7 @@ function install(name, root, force) {
   const provenance = origin
     ? `${origin.repo} @ ${String(origin.commit).slice(0, 12)}, ${origin.license}`
     : "maintained in this repository";
-  console.log(`installed ${name} -> ${dest} (${listed.length} file(s), ${provenance})`);
+  if (!quiet) console.log(`installed ${name} -> ${dest} (${listed.length} file(s), ${provenance})`);
 }
 
 /**
@@ -206,7 +206,7 @@ function usage(code = 0) {
   console.log(`Usage:
   intel-skills list
   intel-skills show <skill>
-  intel-skills install <skill>|--all --target ${Object.keys(INSTALL_TARGETS).join("|")} [--dir <path>] [--force]
+  intel-skills install <skill>|--all --target ${Object.keys(INSTALL_TARGETS).join("|")} [--dir <path>] [--force] [--quiet|-q]
   intel-skills verify <skill> --path <installed-skill-dir>
 
 Every command is a local operation on this checkout: no network, and nothing but node
@@ -248,6 +248,7 @@ try {
     if (!target && !dirOverride) usage(1);
     const root = targetRoot(target, dirOverride);
     const force = args.includes("--force");
+    const quiet = args.includes("--quiet") || args.includes("-q");
     if (args.includes("--all")) {
       // One skill's failure must not decide the other thirty-two. Aborting on the
       // first error left an arbitrary prefix of the catalog installed and said nothing
@@ -258,7 +259,7 @@ try {
       const failures = [];
       for (const name of names) {
         try {
-          install(name, root, force);
+          install(name, root, force, quiet);
         } catch (error) {
           failures.push(`${name}: ${error.message}`);
           console.error(`error: ${name}: ${error.message}`);
@@ -271,9 +272,11 @@ try {
         process.exit(1);
       }
     } else {
-      const name = args[0];
-      if (!name || name.startsWith("--")) usage(1);
-      install(name, root, force);
+      const name = args.find(
+        (arg, i) => !arg.startsWith("-") && args[i - 1] !== "--target" && args[i - 1] !== "--dir",
+      );
+      if (!name) usage(1);
+      install(name, root, force, quiet);
     }
   } else if (command === "verify") {
     const name = args[0];
