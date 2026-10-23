@@ -204,7 +204,7 @@ function argValue(args, flag) {
 
 function usage(code = 0) {
   console.log(`Usage:
-  intel-skills list
+  intel-skills list [--imported|--own]
   intel-skills show <skill>
   intel-skills install <skill>|--all --target ${Object.keys(INSTALL_TARGETS).join("|")} [--dir <path>] [--force]
   intel-skills verify <skill> --path <installed-skill-dir>
@@ -221,8 +221,12 @@ try {
   if (!command || command === "-h" || command === "--help") usage(0);
 
   if (command === "list") {
+    const imported = args.includes("--imported");
+    const own = args.includes("--own");
+    if (imported && own) throw new Error("--imported and --own cannot be combined");
     for (const name of catalog()) {
       const origin = source(name);
+      if ((imported && !origin) || (own && origin)) continue;
       const kind = origin
         ? `imported\t${origin.repo.split("/").slice(-1)[0]}@${String(origin.commit).slice(0, 12)}`
         : "own\t-";

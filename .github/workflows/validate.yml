@@ -146,6 +146,16 @@ jobs:
       - name: Catalog is listable
         run: node bin/intel-skills.mjs list
 
+      - name: Catalog list filters partition the catalog
+        run: |
+          set -euo pipefail
+          all=$(node bin/intel-skills.mjs list | wc -l)
+          imported=$(node bin/intel-skills.mjs list --imported | wc -l)
+          own=$(node bin/intel-skills.mjs list --own | wc -l)
+          test "$((imported + own))" -eq "${all}"
+          node bin/intel-skills.mjs list --imported | cut -f2 | grep -qx imported
+          ! node bin/intel-skills.mjs list --imported --own
+
       # An imported skill, end to end: installed, then verified offline from disk. An
       # import is where the file list is longest and where a copy that dropped
       # something would be least obvious, so it is the single-skill case worth pinning.
