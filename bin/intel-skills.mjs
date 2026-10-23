@@ -205,7 +205,7 @@ function argValue(args, flag) {
 function usage(code = 0) {
   console.log(`Usage:
   intel-skills list
-  intel-skills show <skill>
+  intel-skills show <skill> [--json]
   intel-skills install <skill>|--all --target ${Object.keys(INSTALL_TARGETS).join("|")} [--dir <path>] [--force]
   intel-skills verify <skill> --path <installed-skill-dir>
 
@@ -229,19 +229,25 @@ try {
       console.log(`${name}\t${kind}\t${description(name).slice(0, 100)}`);
     }
   } else if (command === "show") {
-    const name = args[0];
+    const name = args.find((arg) => !arg.startsWith("--"));
     const src = skillDir(name);
     const origin = source(name);
-    if (origin) {
-      console.log(`upstream:  ${origin.repo}/tree/${origin.commit}/${origin.path}`);
-      console.log(`pinned:    ${origin.commit}`);
-      console.log(`license:   ${origin.license}`);
-      if (origin["modified-files"]) {
-        console.log(`modified:  ${origin["modified-files"].join(", ")}`);
+    if (args.includes("--json")) {
+      console.log(
+        JSON.stringify({ name, description: description(name), source: origin, files: files(src) }, null, 2),
+      );
+    } else {
+      if (origin) {
+        console.log(`upstream:  ${origin.repo}/tree/${origin.commit}/${origin.path}`);
+        console.log(`pinned:    ${origin.commit}`);
+        console.log(`license:   ${origin.license}`);
+        if (origin["modified-files"]) {
+          console.log(`modified:  ${origin["modified-files"].join(", ")}`);
+        }
+        console.log("");
       }
-      console.log("");
+      console.log(fs.readFileSync(path.join(src, "SKILL.md"), "utf8"));
     }
-    console.log(fs.readFileSync(path.join(src, "SKILL.md"), "utf8"));
   } else if (command === "install") {
     const target = argValue(args, "--target");
     const dirOverride = argValue(args, "--dir");
