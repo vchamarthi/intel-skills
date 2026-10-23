@@ -204,14 +204,15 @@ function argValue(args, flag) {
 
 function usage(code = 0) {
   console.log(`Usage:
-  intel-skills list
+  intel-skills list [--width <characters>]
   intel-skills show <skill>
   intel-skills install <skill>|--all --target ${Object.keys(INSTALL_TARGETS).join("|")} [--dir <path>] [--force]
   intel-skills verify <skill> --path <installed-skill-dir>
 
 Every command is a local operation on this checkout: no network, and nothing but node
 is required. \`list\` marks which skills are copies of another repository's work, and
-\`show\` says which commit a copy was taken from.`);
+\`show\` says which commit a copy was taken from. \`list --width\` sets how many characters
+of each description are printed (default 100).`);
   process.exit(code);
 }
 
@@ -221,12 +222,15 @@ try {
   if (!command || command === "-h" || command === "--help") usage(0);
 
   if (command === "list") {
+    const rawWidth = argValue(args, "--width");
+    const width = rawWidth === null ? 100 : Number(rawWidth);
+    if (!Number.isInteger(width) || width < 1) throw new Error(`--width must be a positive integer: ${rawWidth}`);
     for (const name of catalog()) {
       const origin = source(name);
       const kind = origin
         ? `imported\t${origin.repo.split("/").slice(-1)[0]}@${String(origin.commit).slice(0, 12)}`
         : "own\t-";
-      console.log(`${name}\t${kind}\t${description(name).slice(0, 100)}`);
+      console.log(`${name}\t${kind}\t${description(name).slice(0, width)}`);
     }
   } else if (command === "show") {
     const name = args[0];
