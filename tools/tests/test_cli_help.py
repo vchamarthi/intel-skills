@@ -28,6 +28,12 @@ class SubcommandHelpTest(unittest.TestCase):
                 self.assertTrue(result.stdout.startswith("Usage:"))
                 self.assertNotIn("invalid skill name", result.stderr)
 
+    def test_flag_value_is_not_a_help_request(self) -> None:
+        result = run("verify", "linux-perf", "--path", "-h")
+        self.assertEqual(result.returncode, 1)
+        self.assertNotIn("Usage:", result.stdout)
+        self.assertIn("no such directory", result.stderr)
+
     def test_list_still_lists_without_help(self) -> None:
         result = run("list")
         self.assertEqual(result.returncode, 0)
