@@ -205,7 +205,7 @@ function argValue(args, flag) {
 function usage(code = 0) {
   console.log(`Usage:
   intel-skills list
-  intel-skills show <skill>
+  intel-skills show <skill> [--description]
   intel-skills install <skill>|--all --target ${Object.keys(INSTALL_TARGETS).join("|")} [--dir <path>] [--force]
   intel-skills verify <skill> --path <installed-skill-dir>
 
@@ -229,8 +229,13 @@ try {
       console.log(`${name}\t${kind}\t${description(name).slice(0, 100)}`);
     }
   } else if (command === "show") {
-    const name = args[0];
+    const descriptionOnly = args.includes("--description");
+    const name = args.find((arg) => !arg.startsWith("--"));
     const src = skillDir(name);
+    if (descriptionOnly) {
+      console.log(description(name));
+      process.exit(0);
+    }
     const origin = source(name);
     if (origin) {
       console.log(`upstream:  ${origin.repo}/tree/${origin.commit}/${origin.path}`);
