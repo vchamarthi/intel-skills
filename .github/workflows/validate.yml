@@ -157,6 +157,15 @@ jobs:
           test -s "${RUNNER_TEMP}/skills/linux-perf/SKILL.md"
           test -s "${RUNNER_TEMP}/skills/linux-perf/.source.json"
 
+      # `--option=value` is the same call as `--option value`; a regression here makes
+      # install print usage, so the round trip is pinned in the equals form too.
+      - name: Install and verify with the equals form
+        run: |
+          set -euo pipefail
+          node bin/intel-skills.mjs install linux-perf --dir="${RUNNER_TEMP}/equals"
+          node bin/intel-skills.mjs verify linux-perf --path="${RUNNER_TEMP}/equals/linux-perf"
+          python3 -m unittest discover -s tools/tests -p 'test_cli_*.py'
+
       # The whole catalog, every entry verified. `--all` has no per-skill failure mode
       # left to tolerate now that install is a local copy, which is the point: the run
       # either writes 33 skills or names the one it could not.

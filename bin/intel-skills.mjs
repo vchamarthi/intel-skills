@@ -195,6 +195,12 @@ function verify(name, dir) {
 }
 
 function argValue(args, flag) {
+  const joined = args.find((arg) => arg.startsWith(`${flag}=`));
+  if (joined !== undefined) {
+    const value = joined.slice(flag.length + 1);
+    if (!value) throw new Error(`${flag} requires a value`);
+    return value;
+  }
   const index = args.indexOf(flag);
   if (index === -1) return null;
   const value = args[index + 1];
@@ -208,6 +214,8 @@ function usage(code = 0) {
   intel-skills show <skill>
   intel-skills install <skill>|--all --target ${Object.keys(INSTALL_TARGETS).join("|")} [--dir <path>] [--force]
   intel-skills verify <skill> --path <installed-skill-dir>
+
+Options that take a value also accept \`--option=value\`.
 
 Every command is a local operation on this checkout: no network, and nothing but node
 is required. \`list\` marks which skills are copies of another repository's work, and
