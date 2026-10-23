@@ -206,6 +206,7 @@ function usage(code = 0) {
   console.log(`Usage:
   intel-skills list
   intel-skills show <skill>
+  intel-skills bundles
   intel-skills install <skill>|--all --target ${Object.keys(INSTALL_TARGETS).join("|")} [--dir <path>] [--force]
   intel-skills verify <skill> --path <installed-skill-dir>
 
@@ -227,6 +228,12 @@ try {
         ? `imported\t${origin.repo.split("/").slice(-1)[0]}@${String(origin.commit).slice(0, 12)}`
         : "own\t-";
       console.log(`${name}\t${kind}\t${description(name).slice(0, 100)}`);
+    }
+  } else if (command === "bundles") {
+    const file = path.join(ROOT, "skills.sh.json");
+    const groupings = JSON.parse(fs.readFileSync(file, "utf8")).groupings ?? [];
+    for (const group of groupings) {
+      console.log(`${group.title}\t${group.skills.length}\t${group.skills.join(",")}`);
     }
   } else if (command === "show") {
     const name = args[0];
