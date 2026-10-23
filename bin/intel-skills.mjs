@@ -165,7 +165,7 @@ function install(name, root, force) {
  * matches the upstream an imported skill was copied from — that needs the network and
  * is `python3 tools/sync_external.py --check`.
  */
-function verify(name, dir) {
+function verify(name, dir, quiet = false) {
   const src = skillDir(name);
   const installed = path.resolve(dir);
   if (!fs.existsSync(installed)) throw new Error(`no such directory: ${installed}`);
@@ -191,7 +191,7 @@ function verify(name, dir) {
         (problems.length > 4 ? ` (+${problems.length - 4} more)` : ""),
     );
   }
-  console.log(`ok ${name} (${wanted.length} file(s) match skills/${name}/)`);
+  if (!quiet) console.log(`ok ${name} (${wanted.length} file(s) match skills/${name}/)`);
 }
 
 function argValue(args, flag) {
@@ -207,7 +207,7 @@ function usage(code = 0) {
   intel-skills list
   intel-skills show <skill>
   intel-skills install <skill>|--all --target ${Object.keys(INSTALL_TARGETS).join("|")} [--dir <path>] [--force]
-  intel-skills verify <skill> --path <installed-skill-dir>
+  intel-skills verify <skill> --path <installed-skill-dir> [--quiet]
 
 Every command is a local operation on this checkout: no network, and nothing but node
 is required. \`list\` marks which skills are copies of another repository's work, and
@@ -279,7 +279,7 @@ try {
     const name = args[0];
     const dir = argValue(args, "--path");
     if (!name || !dir) usage(1);
-    verify(name, dir);
+    verify(name, dir, args.includes("--quiet"));
   } else {
     usage(1);
   }
