@@ -113,7 +113,9 @@ npx github:intel/skills verify linux-perf --path ~/.claude/skills/linux-perf
 Node 20 or newer, no dependencies, nothing from npm, and no network call after the
 repository itself has been obtained — including for an imported skill, because its
 directory is already here in full at its pinned commit. `verify` re-checks an installed
-skill against the catalog byte for byte, and `show <skill>` prints its provenance.
+skill against the catalog byte for byte (add `--json` for one machine-readable object:
+`ok`, `skill`, `path`, `files`, `problems`, or `ok: false` with `error`), and
+`show <skill>` prints its provenance.
 
 | Path | Best for |
 |---|---|

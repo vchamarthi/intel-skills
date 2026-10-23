@@ -43,6 +43,16 @@ class VerifyJsonTest(unittest.TestCase):
         self.assertIn("SKILL.md differs from the catalog", report["problems"])
         self.assertEqual(len(report["problems"]), 6)
 
+    def test_failure_before_the_comparison_still_prints_json(self):
+        result = run("verify", SKILL, "--path", str(self.installed / "missing"), "--json")
+        self.assertEqual(result.returncode, 1)
+        report = json.loads(result.stdout)
+        self.assertIs(report["ok"], False)
+        self.assertIn("no such directory", report["error"])
+        unknown = run("verify", "no-such-skill", "--path", str(self.installed), "--json")
+        self.assertEqual(unknown.returncode, 1)
+        self.assertIn("skill not found", json.loads(unknown.stdout)["error"])
+
     def test_text_output_is_unchanged_without_the_flag(self):
         result = run("verify", SKILL, "--path", str(self.installed))
         self.assertEqual(result.returncode, 0)

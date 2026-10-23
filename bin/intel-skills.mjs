@@ -293,5 +293,10 @@ try {
   }
 } catch (error) {
   console.error(`error: ${error.message}`);
-  process.exit(1);
+  // A script that asked for JSON parses stdout, so a failure before the comparison
+  // (unknown skill, missing directory) gets an object too, not an empty stream.
+  if (command === "verify" && args.includes("--json")) {
+    console.log(JSON.stringify({ ok: false, error: error.message }));
+  }
+  process.exitCode = 1;
 }
