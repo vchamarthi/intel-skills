@@ -186,3 +186,6 @@ jobs:
             echo "::error::verify accepted a file no skill in the catalog ships"
             exit 1
           fi
+
+      - name: Installer CLI tests
+        run: python3 -m unittest discover -s tests
