@@ -204,13 +204,13 @@ function argValue(args, flag) {
 
 function usage(code = 0) {
   console.log(`Usage:
-  intel-skills list
+  intel-skills list [--names]
   intel-skills show <skill>
   intel-skills install <skill>|--all --target ${Object.keys(INSTALL_TARGETS).join("|")} [--dir <path>] [--force]
   intel-skills verify <skill> --path <installed-skill-dir>
 
 Every command is a local operation on this checkout: no network, and nothing but node
-is required. \`list\` marks which skills are copies of another repository's work, and
+is required. \`list --names\` prints one skill name per line. \`list\` marks which skills are copies of another repository's work, and
 \`show\` says which commit a copy was taken from.`);
   process.exit(code);
 }
@@ -221,7 +221,12 @@ try {
   if (!command || command === "-h" || command === "--help") usage(0);
 
   if (command === "list") {
+    const namesOnly = args.includes("--names");
     for (const name of catalog()) {
+      if (namesOnly) {
+        console.log(name);
+        continue;
+      }
       const origin = source(name);
       const kind = origin
         ? `imported\t${origin.repo.split("/").slice(-1)[0]}@${String(origin.commit).slice(0, 12)}`
