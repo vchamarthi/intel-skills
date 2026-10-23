@@ -207,6 +207,7 @@ function usage(code = 0) {
   intel-skills list
   intel-skills show <skill>
   intel-skills install <skill>|--all --target ${Object.keys(INSTALL_TARGETS).join("|")} [--dir <path>] [--force]
+  intel-skills installed --target ${Object.keys(INSTALL_TARGETS).join("|")} [--dir <path>]
   intel-skills verify <skill> --path <installed-skill-dir>
 
 Every command is a local operation on this checkout: no network, and nothing but node
@@ -275,6 +276,21 @@ try {
       if (!name || name.startsWith("--")) usage(1);
       install(name, root, force);
     }
+  } else if (command === "installed") {
+    const target = argValue(args, "--target");
+    const dirOverride = argValue(args, "--dir");
+    if (!target && !dirOverride) usage(1);
+    const root = targetRoot(target, dirOverride);
+    const known = new Set(catalog());
+    const present = fs.existsSync(root)
+      ? fs
+          .readdirSync(root, { withFileTypes: true })
+          .filter((entry) => entry.isDirectory() && fs.existsSync(path.join(root, entry.name, "SKILL.md")))
+          .map((entry) => entry.name)
+          .sort()
+      : [];
+    for (const name of present) console.log(known.has(name) ? name : `${name}\t(not in this catalog)`);
+    console.log(`${present.length} skill(s) in ${root}`);
   } else if (command === "verify") {
     const name = args[0];
     const dir = argValue(args, "--path");
