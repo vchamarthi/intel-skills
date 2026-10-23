@@ -204,7 +204,7 @@ function argValue(args, flag) {
 
 function usage(code = 0) {
   console.log(`Usage:
-  intel-skills list
+  intel-skills list [--modified]
   intel-skills show <skill>
   intel-skills install <skill>|--all --target ${Object.keys(INSTALL_TARGETS).join("|")} [--dir <path>] [--force]
   intel-skills verify <skill> --path <installed-skill-dir>
@@ -221,8 +221,10 @@ try {
   if (!command || command === "-h" || command === "--help") usage(0);
 
   if (command === "list") {
+    const modifiedOnly = args.includes("--modified");
     for (const name of catalog()) {
       const origin = source(name);
+      if (modifiedOnly && !(origin && origin["modified-files"]?.length > 0)) continue;
       const kind = origin
         ? `imported\t${origin.repo.split("/").slice(-1)[0]}@${String(origin.commit).slice(0, 12)}`
         : "own\t-";
