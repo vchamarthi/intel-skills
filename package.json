@@ -20,6 +20,7 @@
     "!skills/**/evals/**",
     "!skills/**/perf/**",
     "skills.yaml",
+    "skills.sh.json",
     "README.md",
     "LICENSE",
     "NOTICE"

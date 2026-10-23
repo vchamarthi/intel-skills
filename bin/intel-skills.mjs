@@ -233,7 +233,8 @@ try {
     const file = path.join(ROOT, "skills.sh.json");
     const groupings = JSON.parse(fs.readFileSync(file, "utf8")).groupings ?? [];
     for (const group of groupings) {
-      console.log(`${group.title}\t${group.skills.length}\t${group.skills.join(",")}`);
+      const names = group.skills ?? [];
+      console.log(`${group.title}\t${names.length}\t${names.join(",")}`);
     }
   } else if (command === "show") {
     const name = args[0];
