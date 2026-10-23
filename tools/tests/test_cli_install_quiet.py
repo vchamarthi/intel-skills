@@ -22,6 +22,15 @@ class InstallQuietTest(unittest.TestCase):
             self.assertEqual(result.stdout, "")
             self.assertTrue((Path(tmp) / name / "SKILL.md").is_file())
 
+    def test_flag_may_come_before_the_skill_name(self):
+        name = sorted(p.parent.name for p in (ROOT / "skills").glob("*/SKILL.md"))[0]
+        for flag in ("-q", "--quiet"):
+            with tempfile.TemporaryDirectory() as tmp:
+                result = run("install", flag, name, "--dir", tmp)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout, "")
+                self.assertTrue((Path(tmp) / name / "SKILL.md").is_file())
+
     def test_all_keeps_only_the_summary(self):
         with tempfile.TemporaryDirectory() as tmp:
             result = run("install", "--all", "--dir", tmp, "-q")

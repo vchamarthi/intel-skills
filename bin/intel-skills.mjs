@@ -272,7 +272,7 @@ try {
         process.exit(1);
       }
     } else {
-      const name = args[0];
+      const name = args.find((arg) => arg !== "--quiet" && arg !== "-q");
       if (!name || name.startsWith("--")) usage(1);
       install(name, root, force, quiet);
     }
