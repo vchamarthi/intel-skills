@@ -210,8 +210,8 @@ function usage(code = 0) {
   intel-skills verify <skill> --path <installed-skill-dir>
 
 Every command is a local operation on this checkout: no network, and nothing but node
-is required. \`list --names\` prints one skill name per line. \`list\` marks which skills are copies of another repository's work, and
-\`show\` says which commit a copy was taken from.`);
+is required. \`list\` marks which skills are copies of another repository's work, and
+\`show\` says which commit a copy was taken from. \`list --names\` prints names only.`);
   process.exit(code);
 }
 
