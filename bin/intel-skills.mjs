@@ -281,6 +281,7 @@ try {
     if (!name || !dir) usage(1);
     verify(name, dir);
   } else {
+    console.error(`error: unknown command: ${command}`);
     usage(1);
   }
 } catch (error) {
