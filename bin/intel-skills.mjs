@@ -221,6 +221,10 @@ try {
   if (!command || command === "-h" || command === "--help") usage(0);
 
   if (command === "list") {
+    // A mistyped `list --json` used to print the plain catalog and exit 0, which a script
+    // then parses as if the flag had been honoured.
+    if (args.includes("-h") || args.includes("--help")) usage(0);
+    if (args.length > 0) throw new Error(`list takes no arguments (got ${args[0]})`);
     for (const name of catalog()) {
       const origin = source(name);
       const kind = origin
@@ -230,6 +234,7 @@ try {
     }
   } else if (command === "show") {
     const name = args[0];
+    if (args.length > 1) throw new Error(`show takes one skill name (got extra argument ${args[1]})`);
     const src = skillDir(name);
     const origin = source(name);
     if (origin) {
