@@ -2,6 +2,7 @@
 
 import subprocess
 import tempfile
+import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -18,23 +19,25 @@ def first_skill() -> str:
     return run("list").stdout.splitlines()[0].split("\t")[0]
 
 
-def test_unknown_target_with_dir_is_rejected():
-    with tempfile.TemporaryDirectory() as tmp:
-        result = run("install", first_skill(), "--target", "claud-code", "--dir", tmp)
-        assert result.returncode == 1
-        assert "unknown target: claud-code" in result.stderr
-        assert not any(Path(tmp).iterdir())
+class InstallTargetTest(unittest.TestCase):
+    def test_unknown_target_with_dir_is_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            result = run("install", first_skill(), "--target", "claud-code", "--dir", tmp)
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("unknown target: claud-code", result.stderr)
+            self.assertEqual(list(Path(tmp).iterdir()), [])
+
+    def test_known_target_with_dir_installs_into_dir(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            name = first_skill()
+            result = run("install", name, "--target", "agents", "--dir", tmp)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertTrue((Path(tmp) / name / "SKILL.md").is_file())
+
+    def test_dir_alone_still_installs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertEqual(run("install", first_skill(), "--dir", tmp).returncode, 0)
 
 
-def test_known_target_with_dir_installs_into_dir():
-    with tempfile.TemporaryDirectory() as tmp:
-        name = first_skill()
-        result = run("install", name, "--target", "agents", "--dir", tmp)
-        assert result.returncode == 0, result.stderr
-        assert (Path(tmp) / name / "SKILL.md").is_file()
-
-
-def test_dir_alone_still_installs():
-    with tempfile.TemporaryDirectory() as tmp:
-        name = first_skill()
-        assert run("install", name, "--dir", tmp).returncode == 0
+if __name__ == "__main__":
+    unittest.main()
