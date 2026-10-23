@@ -206,6 +206,7 @@ function usage(code = 0) {
   console.log(`Usage:
   intel-skills list
   intel-skills show <skill>
+  intel-skills targets
   intel-skills install <skill>|--all --target ${Object.keys(INSTALL_TARGETS).join("|")} [--dir <path>] [--force]
   intel-skills verify <skill> --path <installed-skill-dir>
 
@@ -227,6 +228,10 @@ try {
         ? `imported\t${origin.repo.split("/").slice(-1)[0]}@${String(origin.commit).slice(0, 12)}`
         : "own\t-";
       console.log(`${name}\t${kind}\t${description(name).slice(0, 100)}`);
+    }
+  } else if (command === "targets") {
+    for (const target of Object.keys(INSTALL_TARGETS)) {
+      console.log(`${target}\t${targetRoot(target)}`);
     }
   } else if (command === "show") {
     const name = args[0];
