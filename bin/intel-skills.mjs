@@ -206,7 +206,7 @@ function usage(code = 0) {
   console.log(`Usage:
   intel-skills list
   intel-skills show <skill>
-  intel-skills install <skill>|--all --target ${Object.keys(INSTALL_TARGETS).join("|")} [--dir <path>] [--force]
+  intel-skills install <skill>...|--all --target ${Object.keys(INSTALL_TARGETS).join("|")} [--dir <path>] [--force]
   intel-skills verify <skill> --path <installed-skill-dir>
 
 Every command is a local operation on this checkout: no network, and nothing but node
@@ -271,9 +271,34 @@ try {
         process.exit(1);
       }
     } else {
-      const name = args[0];
-      if (!name || name.startsWith("--")) usage(1);
-      install(name, root, force);
+      // Every bare word that is not the value of --target/--dir names a skill, so several
+      // can be installed in one call. Each is attempted and each failure listed, as with
+      // --all: one misspelt name must not leave the others uninstalled and unmentioned.
+      const names = [];
+      for (let i = 0; i < args.length; i += 1) {
+        if (args[i] === "--target" || args[i] === "--dir") i += 1;
+        else if (!args[i].startsWith("--") && !names.includes(args[i])) names.push(args[i]);
+      }
+      if (names.length === 0) usage(1);
+      if (names.length === 1) {
+        install(names[0], root, force);
+      } else {
+        const failures = [];
+        for (const name of names) {
+          try {
+            install(name, root, force);
+          } catch (error) {
+            failures.push(`${name}: ${error.message}`);
+            console.error(`error: ${name}: ${error.message}`);
+          }
+        }
+        console.log(`${names.length - failures.length}/${names.length} installed to ${root}`);
+        if (failures.length > 0) {
+          console.error(`${failures.length} skill(s) not installed:`);
+          for (const failure of failures) console.error(`  ${failure}`);
+          process.exit(1);
+        }
+      }
     }
   } else if (command === "verify") {
     const name = args[0];
