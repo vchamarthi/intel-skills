@@ -206,12 +206,14 @@ function usage(code = 0) {
   console.log(`Usage:
   intel-skills list
   intel-skills show <skill>
+  intel-skills path <skill>
   intel-skills install <skill>|--all --target ${Object.keys(INSTALL_TARGETS).join("|")} [--dir <path>] [--force]
   intel-skills verify <skill> --path <installed-skill-dir>
 
 Every command is a local operation on this checkout: no network, and nothing but node
 is required. \`list\` marks which skills are copies of another repository's work, and
-\`show\` says which commit a copy was taken from.`);
+\`show\` says which commit a copy was taken from. \`path\` prints where a skill lives in this
+checkout.`);
   process.exit(code);
 }
 
@@ -242,6 +244,9 @@ try {
       console.log("");
     }
     console.log(fs.readFileSync(path.join(src, "SKILL.md"), "utf8"));
+  } else if (command === "path") {
+    if (!args[0]) usage(1);
+    console.log(skillDir(args[0]));
   } else if (command === "install") {
     const target = argValue(args, "--target");
     const dirOverride = argValue(args, "--dir");
