@@ -108,6 +108,7 @@ npx github:intel/skills install linux-perf --target claude-code  # -> ~/.claude/
 npx github:intel/skills install --all --target agents            # -> ~/.agents/skills
 npx github:intel/skills install xpu-port --dir .agents/skills    # into a project, to commit
 npx github:intel/skills verify linux-perf --path ~/.claude/skills/linux-perf
+npx github:intel/skills verify --all --path ~/.agents/skills     # every catalog skill, after install --all
 ```
 
 Node 20 or newer, no dependencies, nothing from npm, and no network call after the

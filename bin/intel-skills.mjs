@@ -208,6 +208,7 @@ function usage(code = 0) {
   intel-skills show <skill>
   intel-skills install <skill>|--all --target ${Object.keys(INSTALL_TARGETS).join("|")} [--dir <path>] [--force]
   intel-skills verify <skill> --path <installed-skill-dir>
+  intel-skills verify --all --path <skills-dir>
 
 Every command is a local operation on this checkout: no network, and nothing but node
 is required. \`list\` marks which skills are copies of another repository's work, and
@@ -276,10 +277,31 @@ try {
       install(name, root, force);
     }
   } else if (command === "verify") {
-    const name = args[0];
     const dir = argValue(args, "--path");
-    if (!name || !dir) usage(1);
-    verify(name, dir);
+    if (args.includes("--all")) {
+      // The counterpart of `install --all`: `--path` is the directory it wrote into, and
+      // every catalog skill is checked under it. Each is attempted and every failure is
+      // listed, for the same reason `install --all` does not stop at the first one.
+      if (!dir) usage(1);
+      const root = path.resolve(dir);
+      if (!fs.existsSync(root)) throw new Error(`no such directory: ${root}`);
+      const names = catalog();
+      const failures = [];
+      for (const name of names) {
+        try {
+          verify(name, path.join(root, name));
+        } catch (error) {
+          failures.push(`${name}: ${error.message}`);
+          console.error(`error: ${name}: ${error.message}`);
+        }
+      }
+      console.log(`${names.length - failures.length}/${names.length} verified under ${root}`);
+      if (failures.length > 0) process.exit(1);
+    } else {
+      const name = args[0];
+      if (!name || !dir) usage(1);
+      verify(name, dir);
+    }
   } else {
     usage(1);
   }
