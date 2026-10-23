@@ -226,7 +226,9 @@ try {
       const kind = origin
         ? `imported\t${origin.repo.split("/").slice(-1)[0]}@${String(origin.commit).slice(0, 12)}`
         : "own\t-";
-      console.log(`${name}\t${kind}\t${description(name).slice(0, 100)}`);
+      const text = description(name);
+      const summary = text.length > 100 ? `${text.slice(0, 97).trimEnd()}...` : text;
+      console.log(`${name}\t${kind}\t${summary}`);
     }
   } else if (command === "show") {
     const name = args[0];
