@@ -204,7 +204,7 @@ function argValue(args, flag) {
 
 function usage(code = 0) {
   console.log(`Usage:
-  intel-skills list
+  intel-skills list [--from <upstream-repo>]
   intel-skills show <skill>
   intel-skills install <skill>|--all --target ${Object.keys(INSTALL_TARGETS).join("|")} [--dir <path>] [--force]
   intel-skills verify <skill> --path <installed-skill-dir>
@@ -221,7 +221,10 @@ try {
   if (!command || command === "-h" || command === "--help") usage(0);
 
   if (command === "list") {
-    for (const name of catalog()) {
+    const from = argValue(args, "--from");
+    const names = catalog().filter((name) => !from || source(name)?.repo.split("/").slice(-1)[0] === from);
+    if (from && names.length === 0) throw new Error(`no skills imported from ${from}`);
+    for (const name of names) {
       const origin = source(name);
       const kind = origin
         ? `imported\t${origin.repo.split("/").slice(-1)[0]}@${String(origin.commit).slice(0, 12)}`
