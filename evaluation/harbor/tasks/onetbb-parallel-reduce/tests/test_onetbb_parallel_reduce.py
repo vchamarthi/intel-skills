@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Verifier for onetbb-parallel-reduce: parallel_reduce aggregate."""
 import os
 import re
@@ -6,20 +5,21 @@ import subprocess
 import time
 from pathlib import Path
 
+import pytest
+
 BINARY = Path("/app/reduce_tbb")
 SERIAL = Path("/app/reduce_serial")
 TARGET_SOURCE = Path("/app/reduce_tbb.cpp")
-ARGS = ['4000000']
-KEYWORDS = ['parallel_reduce']
+LENGTHS = (1, 2, 31, 4096, 100003, 4000000)
 # oneTBB ships its headers under both spellings, <tbb/...> and <oneapi/tbb/...>,
 # and instruction.md names no header path, so the include check accepts both.
-TBB_INCLUDE = re.compile(r'^\s*#\s*include\s*[<"](?:oneapi/)?tbb[/.]', re.M)
+TBB_INCLUDE = re.compile(r'^\s*#\s*include\s*[<"](?:oneapi/)?tbb[/.]', re.MULTILINE)
 TIMEOUT_SEC = 8.0
 
 
 def _run(cmd):
     start = time.perf_counter()
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=TIMEOUT_SEC + 5)
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=TIMEOUT_SEC + 5, check=False)
     elapsed = time.perf_counter() - start
     assert result.returncode == 0, f"{cmd} exit={result.returncode}\nstdout={result.stdout}\nstderr={result.stderr}"
     assert "VALID" in result.stdout, f"expected VALID in stdout, got {result.stdout!r}"
@@ -39,9 +39,10 @@ def test_binary_exists():
     assert os.access(SERIAL, os.X_OK), f"{SERIAL} is not executable"
 
 
-def test_binary_matches_serial_reference():
-    serial_out, _ = _run([str(SERIAL), *ARGS])
-    parallel_out, elapsed = _run([str(BINARY), *ARGS])
+@pytest.mark.parametrize("length", LENGTHS)
+def test_binary_matches_serial_reference(length):
+    serial_out, _ = _run([str(SERIAL), str(length)])
+    parallel_out, elapsed = _run([str(BINARY), str(length)])
     serial_value = _last_number(serial_out)
     parallel_value = _last_number(parallel_out)
     tolerance = max(1e-6, abs(serial_value) * 1e-8)
@@ -51,11 +52,54 @@ def test_binary_matches_serial_reference():
     assert elapsed < TIMEOUT_SEC, f"execution took {elapsed:.2f}s, expected under {TIMEOUT_SEC}s"
 
 
-def test_source_uses_required_onetbb_api():
+def test_source_declares_onetbb_headers():
     assert TARGET_SOURCE.exists(), f"{TARGET_SOURCE} not found"
     text = TARGET_SOURCE.read_text(errors="replace")
     assert TBB_INCLUDE.search(text), (
         f"no oneTBB header (<tbb/...> or <oneapi/tbb/...>) included in {TARGET_SOURCE}"
     )
-    missing = [kw for kw in KEYWORDS if kw not in text]
-    assert not missing, f"missing required oneTBB/source markers {missing} in {TARGET_SOURCE}"
+
+
+def test_zero_length_is_rejected():
+    result = subprocess.run([str(BINARY), "0"], capture_output=True, text=True,
+                            timeout=TIMEOUT_SEC, check=False)
+    assert result.returncode != 0, "zero-length input must be rejected"
+
+
+def _matches_reference(result, expected):
+    if result.returncode != 0 or "VALID" not in result.stdout:
+        return False
+    try:
+        actual = _last_number(result.stdout)
+    except (AssertionError, ValueError):
+        return False
+    return abs(actual - expected) <= max(1e-6, abs(expected) * 1e-8)
+
+
+def test_algorithm_covers_input_and_contributes_to_result(tmp_path):
+    """Reject comments, unreachable calls and discarded dummy calls, without timing claims."""
+    binary = tmp_path / "instrumented"
+    compile_result = subprocess.run(
+        ["g++", "-O2", "-std=c++17", "-include", str(Path(__file__).with_name("algorithm_probe.hpp")),
+         str(TARGET_SOURCE), "-ltbb", "-o", str(binary)],
+        capture_output=True, text=True, timeout=90, check=False,
+    )
+    assert compile_result.returncode == 0, compile_result.stderr
+    length = 100003
+    reference, _ = _run([str(SERIAL), str(length)])
+    expected = _last_number(reference)
+    coverage = tmp_path / "coverage.txt"
+    env = {**os.environ, "DOKIMI_TBB_COVERAGE_FILE": str(coverage)}
+    env.pop("DOKIMI_DISABLE_ALGORITHM", None)
+    normal = subprocess.run([str(binary), str(length)], env=env,
+                            capture_output=True, text=True, timeout=TIMEOUT_SEC, check=False)
+    assert _matches_reference(normal, expected), "instrumented solution must preserve the result"
+    covered = sum(int(n) for n in coverage.read_text().splitlines()) if coverage.exists() else 0
+    assert covered >= length, f"required oneTBB algorithm covered {covered} items, expected at least {length}"
+    disabled = subprocess.run([str(binary), str(length)],
+                             env={**env, "DOKIMI_DISABLE_ALGORITHM": "1"},
+                             capture_output=True, text=True, timeout=TIMEOUT_SEC, check=False)
+    assert not _matches_reference(disabled, expected), (
+        "removing the required oneTBB algorithm did not change the correct result; "
+        "a discarded dummy call is not an implementation"
+    )
