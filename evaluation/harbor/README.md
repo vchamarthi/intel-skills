@@ -486,3 +486,20 @@ sentence itself. And a marker detects contamination, it does not prevent it:
 publishing a benchmark task puts it in reach of future training corpora, which is
 the price of a result anyone outside Intel can reproduce. That is why the suite
 needs new discriminating tasks over time rather than these fifteen forever.
+
+### oneTBB grader controls
+
+Run `python3 tools/check_onetbb_graders.py` from the repository root with Docker
+available. It accepts both header/namespace spellings of the reference solutions
+and rejects serial implementations, unreachable calls, discarded dummy calls,
+fixed-length shortcuts, and solutions that accept zero-length input. The same
+keyless check runs in the oracle-smoke workflow.
+
+The reduce and scan verifiers compare several input lengths with the serial
+reference. A grader-only header also records the input ranges passed to the
+required algorithm, then disables that algorithm in a second execution: the
+correct result must depend on the algorithm's work. This checks API/result
+dependence and rejects the listed shortcuts; it does not establish thread count,
+prove every operation is parallel, resist arbitrary malicious verifier evasion,
+or measure a speedup. The control runner uses a two-CPU correctness quota and
+does not change the tasks' declared runtime resources.

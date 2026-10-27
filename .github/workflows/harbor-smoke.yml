@@ -20,6 +20,7 @@ on:
       - "evaluation/harbor/**"
       - "skills/**"
       - "tools/check_harbor_job.py"
+      - "tools/check_onetbb_graders.py"
       - ".github/workflows/harbor-smoke.yml"
   push:
     branches: [main]
@@ -27,6 +28,7 @@ on:
       - "evaluation/harbor/**"
       - "skills/**"
       - "tools/check_harbor_job.py"
+      - "tools/check_onetbb_graders.py"
       - ".github/workflows/harbor-smoke.yml"
 
 permissions:
@@ -95,6 +97,9 @@ jobs:
         run: |
           docker compose version
           docker buildx version
+
+      - name: oneTBB grader positive and negative controls
+        run: python3 tools/check_onetbb_graders.py
 
       - name: Oracle smoke
         run: |
