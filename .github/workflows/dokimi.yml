@@ -1,0 +1,131 @@
+# Copyright (C) 2026 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+name: Dokimi static catalog
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHONPATH: ''
+  PYTHONSAFEPATH: '1'
+  PIP_CONFIG_FILE: /dev/null
+  PIP_NO_INPUT: '1'
+
+jobs:
+  static:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out candidate catalog as data
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: consumer
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check out trusted framework
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: vchamarthi/dokimi
+          # Local tested candidate: publish this exact commit to the fork before enabling.
+          # Hosted checkout and fork-event execution remain unqualified.
+          ref: 3c9953a9ed0f1bdf4e0dc9f6aaaf0de7d0c8c8da
+          path: framework
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v6.2.0
+        with:
+          python-version: '3.13'
+
+      - name: Determine diff base
+        id: base
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+        shell: bash
+        run: |
+          base=''
+          if [ "$EVENT_NAME" = pull_request ]; then
+            base="$PR_BASE_SHA"
+          elif [ "$EVENT_NAME" = push ]; then
+            base="$PUSH_BEFORE"
+          fi
+          if [ "$EVENT_NAME" = pull_request ] || [ "$EVENT_NAME" = push ]; then
+            if [[ ! "$base" =~ ^[0-9a-f]{40}$ ]] || [[ "$base" =~ ^0{40}$ ]]; then
+              base=unavailable
+            fi
+          fi
+          printf 'ref=%s\n' "$base" >> "$GITHUB_OUTPUT"
+
+      - name: Build and install trusted framework wheel
+        id: install
+        working-directory: framework/dokimi
+        shell: bash
+        run: |
+          python -m venv "$RUNNER_TEMP/dokimi-venv"
+          python_bin="$RUNNER_TEMP/dokimi-venv/bin/python"
+          "$python_bin" -m pip install --require-hashes \
+            -r requirements.lock.txt -r requirements-ci.lock.txt
+          "$python_bin" -m pip wheel --no-deps --no-build-isolation \
+            --wheel-dir "$RUNNER_TEMP/dokimi-wheel" .
+          "$python_bin" -m pip install --no-deps "$RUNNER_TEMP"/dokimi-wheel/dokimi-*.whl
+
+      - name: Evaluate catalog without executing consumer code
+        id: evaluate
+        working-directory: ${{ runner.temp }}
+        env:
+          BASE_REF: ${{ steps.base.outputs.ref }}
+        shell: bash
+        run: |
+          args=()
+          if [ -n "$BASE_REF" ]; then
+            args+=(--changed-from "$BASE_REF")
+          fi
+          set +e
+          "$RUNNER_TEMP/dokimi-venv/bin/dokimi" catalog eval \
+            "$GITHUB_WORKSPACE/consumer" --tier static \
+            --out-dir "$RUNNER_TEMP/dokimi-receipts" "${args[@]}"
+          status=$?
+          set -e
+          printf '%s\n' "$status" > "$RUNNER_TEMP/dokimi-status.txt"
+          exit "$status"
+
+      - name: Summarize static receipts
+        id: summary
+        if: always()
+        working-directory: ${{ runner.temp }}
+        shell: bash
+        run: |
+          printf '## Dokimi catalog\n\nStatic checks only; no runtime skill benefit or promotion is established.\n\n' >> "$GITHUB_STEP_SUMMARY"
+          if [ -f "$RUNNER_TEMP/dokimi-receipts/report.md" ]; then
+            cat "$RUNNER_TEMP/dokimi-receipts/report.md" >> "$GITHUB_STEP_SUMMARY"
+          else
+            printf 'No report was produced; inspect the failed setup/evaluation step.\n' >> "$GITHUB_STEP_SUMMARY"
+          fi
+          if [ -f "$RUNNER_TEMP/dokimi-status.txt" ]; then
+            printf '\nCLI exit: %s\n' "$(cat "$RUNNER_TEMP/dokimi-status.txt")" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload static receipts even on failure
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dokimi-static
+          path: |
+            ${{ runner.temp }}/dokimi-receipts/
+            ${{ runner.temp }}/dokimi-status.txt
+          if-no-files-found: warn
+          retention-days: 14
