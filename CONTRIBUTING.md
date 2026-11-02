@@ -240,6 +240,42 @@ where neither skill's description says which one a request should route to. Answ
 the pull request; it fails only if your skill does nothing another already does. It compares
 what a skill does, not what it says, so a clean run is not a duplication check.
 
+### Dokimi static catalog receipts
+
+[`.github/workflows/dokimi.yml`](.github/workflows/dokimi.yml) runs
+`dokimi catalog eval ROOT --tier static` from an independently pinned framework
+checkout. The candidate repository is input data: its scripts, tasks, oracle,
+verifiers and package installers are never executed. The framework owns changed-path
+selection, including task ownership and conservative full selection for an unavailable
+base. Every run checks catalog integrity, including a documentation-only change.
+
+The job needs no API key, model, Docker, write permission or repository secret.
+It uploads `catalog.json`, `plan.json`, `result.json`, `report.md` and the CLI exit
+status, and writes the report to the job summary even when validation fails.
+Exit 0 means the selected deterministic checks passed; 1 means validation failed;
+2 means the input, invocation or output was unusable. Static success establishes
+neither runtime skill benefit nor eligibility for `validated`, and changes no catalog
+status. Dependency installation currently uses the framework's existing runtime and
+CI tool hash locks, including its wheel build tools.
+
+The framework pin is `3c9953a9ed0f1bdf4e0dc9f6aaaf0de7d0c8c8da`. Its hashlocked
+wheel installation and the shell scenarios below passed locally against disposable
+catalog clones. This commit must be published to `vchamarthi/dokimi` before enabling
+the workflow; it currently exists only locally. Hosted checkout, artifact transport,
+permission enforcement and fork-event behavior still need a GitHub Actions run after
+publication. The local shell tests exercise the exact workflow `run` blocks:
+
+```bash
+python3 -m unittest tools/tests/test_dokimi_workflow.py -v
+# Also run the real CLI scenarios from a separately installed candidate wheel:
+DOKIMI_TEST_BIN=/absolute/path/to/venv/bin/dokimi \
+  python3 -m unittest tools/tests/test_dokimi_workflow.py -v
+```
+
+Those scenarios use disposable clones of this catalog; they do not emulate the
+GitHub service or execute the dependency-installation step. Reproduce installation
+by running the workflow's trusted-framework build step against the pinned checkout.
+
 ### The security scan
 
 Every skill is also scanned by [NVIDIA SkillSpector](https://github.com/NVIDIA/skillspector)
