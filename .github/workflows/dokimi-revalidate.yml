@@ -42,10 +42,10 @@ jobs:
     if: github.event_name == 'workflow_dispatch' && github.repository == 'vchamarthi/intel-skills'
     permissions:
       contents: read
-    uses: vchamarthi/dokimi/.github/workflows/dokimi-revalidate.yml@d51db9a340ae68b04a706ba400ab653b0e532ef9
+    uses: vchamarthi/dokimi/.github/workflows/dokimi-revalidate.yml@bf92c62032e58c5f2bb1b23acb3ec7a547428e1d
     with:
       dokimi-repository: vchamarthi/dokimi
-      dokimi-ref: d51db9a340ae68b04a706ba400ab653b0e532ef9
+      dokimi-ref: bf92c62032e58c5f2bb1b23acb3ec7a547428e1d
       config: .github/dokimi/config.yaml
       policy: .github/dokimi/policy.yaml
       environment: dokimi-live
