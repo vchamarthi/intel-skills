@@ -419,3 +419,6 @@
   maintainer: "sandlbn"
   intel-products: "OpenVINO, Intel GPU"
   intel-hw-class: "gpu"
+
+- name: ci-integration-canary
+  maintainer: "vchamarthi"

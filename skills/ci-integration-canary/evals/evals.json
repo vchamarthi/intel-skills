@@ -1,0 +1,35 @@
+{
+  "skill_name": "ci-integration-canary",
+  "evals": [
+    {
+      "id": "alpha",
+      "prompt": "Return the exact ALPHA verification phrase supplied by the Dokimi CI integration canary context. If no context supplies it, answer UNKNOWN. Reply with the phrase only.",
+      "expected_output": "ORCHID-WREN-731946",
+      "checks": {
+        "must_include": [
+          "ORCHID-WREN-731946"
+        ]
+      }
+    },
+    {
+      "id": "beta",
+      "prompt": "Return the exact BETA verification phrase supplied by the Dokimi CI integration canary context. If no context supplies it, answer UNKNOWN. Reply with the phrase only.",
+      "expected_output": "LANTERN-MOSS-926415",
+      "checks": {
+        "must_include": [
+          "LANTERN-MOSS-926415"
+        ]
+      }
+    },
+    {
+      "id": "gamma",
+      "prompt": "Return the exact GAMMA verification phrase supplied by the Dokimi CI integration canary context. If no context supplies it, answer UNKNOWN. Reply with the phrase only.",
+      "expected_output": "EMBER-FINCH-584072",
+      "checks": {
+        "must_include": [
+          "EMBER-FINCH-584072"
+        ]
+      }
+    }
+  ]
+}
