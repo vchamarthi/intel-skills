@@ -2,7 +2,9 @@
 # SPDX-License-Identifier: Apache-2.0
 name: Publish Dokimi evaluation receipt
 
-on:
+# The pinned publisher verifies run/artifact/current PR identities and bounded JSON.
+# It never checks out or executes candidate code; only this trigger is exempted.
+on: # zizmor: ignore[dangerous-triggers]
   workflow_run:
     workflows: [Dokimi catalog evaluation]
     types: [completed]

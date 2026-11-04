@@ -12,17 +12,17 @@ ROOT = Path(__file__).resolve().parents[2]
 CONTRACT = json.loads((Path(__file__).parent / "fixtures/dokimi-workflow-contracts.json").read_text())
 
 
-def mappings(text, field):
+def mappings(text, field, indent=4):
     lines = text.splitlines()
     values = {}
     active = False
     for line in lines:
-        if line == f"    {field}:":
+        if line == " " * indent + field + ":":
             active = True
             continue
-        if active and line.strip() and not line.startswith("      "):
+        if active and line.strip() and not line.startswith(" " * (indent + 2)):
             break
-        match = re.fullmatch(r"      ([a-z][a-z0-9-]*): (.+)", line)
+        match = re.fullmatch(" " * (indent + 2) + r"([a-z][a-z0-9-]*): (.+)", line)
         if active and match:
             values[match[1]] = match[2]
     return values
@@ -62,6 +62,13 @@ class PinnedWorkflowCalls(unittest.TestCase):
                     self.assertEqual(repository, CONTRACT["repository"])
                     self.assertEqual(commit, CONTRACT["commit"])
                     contract = CONTRACT["workflows"][workflow]
+                    allowed = (mappings(job, "permissions") if re.search(r"(?m)^    permissions:", job)
+                               else mappings(text, "permissions", indent=0))
+                    ranks = {"none": 0, "read": 1, "write": 2}
+                    for nested, permissions in contract["job_permissions"].items():
+                        for permission, level in permissions.items():
+                            self.assertLessEqual(ranks[level], ranks[allowed.get(permission, "none")],
+                                                 f"{filename}: nested {nested} requires {permission}:{level}, regardless of its condition")
                     values = mappings(job, "with")
                     self.assertFalse(set(values) - set(contract["inputs"]))
                     required = {key for key, spec in contract["inputs"].items() if spec["required"]}

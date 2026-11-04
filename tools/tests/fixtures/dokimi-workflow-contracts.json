@@ -87,7 +87,17 @@
         "openai-api-key",
         "anthropic-api-key",
         "claude-code-oauth-token"
-      ]
+      ],
+      "job_permissions": {
+        "validate": {},
+        "check": {
+          "contents": "read"
+        },
+        "run": {
+          "contents": "read",
+          "pull-requests": "read"
+        }
+      }
     },
     "dokimi-publish.yml": {
       "sha256": "714aade3294f6efc0ba1030ccdb537c29f669edadf07d41057b5416e01463dbc",
@@ -113,7 +123,14 @@
           "required": false
         }
       },
-      "secrets": []
+      "secrets": [],
+      "job_permissions": {
+        "publish": {
+          "actions": "read",
+          "pull-requests": "read",
+          "issues": "write"
+        }
+      }
     },
     "dokimi-record.yml": {
       "sha256": "6751072d7973475556479c25e4629b4928291427c1a6dde4a4741114455451a8",
@@ -163,7 +180,14 @@
           "required": false
         }
       },
-      "secrets": []
+      "secrets": [],
+      "job_permissions": {
+        "record": {
+          "contents": "write",
+          "actions": "read",
+          "pull-requests": "read"
+        }
+      }
     },
     "dokimi-revalidate.yml": {
       "sha256": "18318512ba0e62ea543c0ec779c9ec148092690c2c01bea145c12fcfbf55ea3c",
@@ -237,7 +261,12 @@
         "openai-api-key",
         "anthropic-api-key",
         "claude-code-oauth-token"
-      ]
+      ],
+      "job_permissions": {
+        "revalidate": {
+          "contents": "read"
+        }
+      }
     }
   }
 }

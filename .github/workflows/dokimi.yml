@@ -58,6 +58,9 @@ concurrency:
 jobs:
   checks:
     if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+      pull-requests: read
     uses: vchamarthi/dokimi/.github/workflows/dokimi-pr.yml@88157a4184e842e6ab7f0cfd34844eea6dadccbd
     with:
       dokimi-repository: vchamarthi/dokimi
