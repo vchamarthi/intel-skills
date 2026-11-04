@@ -1,0 +1,24 @@
+# Copyright (C) 2026 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+name: Publish Dokimi evaluation receipt
+
+on:
+  workflow_run:
+    workflows: [Dokimi catalog evaluation]
+    types: [completed]
+
+permissions: {}
+
+jobs:
+  publish:
+    permissions:
+      actions: read
+      pull-requests: read
+      issues: write
+    uses: vchamarthi/dokimi/.github/workflows/dokimi-publish.yml@88157a4184e842e6ab7f0cfd34844eea6dadccbd
+    with:
+      source-run: ${{ format('{0}', github.event.workflow_run.id) }}
+      source-attempt: ${{ format('{0}', github.event.workflow_run.run_attempt) }}
+      source-workflow: .github/workflows/dokimi.yml
+      controller-sha: ${{ github.event.workflow_run.event == 'workflow_dispatch' && github.sha || '' }}
+      policy-digest: sha256:c678210e50945577cb4fbe56d8e45f98afaee736f69a652907329495bc42f7ca

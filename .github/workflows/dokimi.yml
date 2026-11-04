@@ -1,0 +1,123 @@
+# Copyright (C) 2026 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+name: Dokimi catalog evaluation
+run-name: ${{ github.event_name == 'workflow_dispatch' && format('dokimi:model pr={0} head={1} base={2}', inputs.pr-number, inputs.expected-head, inputs.expected-base) || 'dokimi:check' }}
+
+on:
+  pull_request:
+    paths:
+      - skills/**
+      - skills.yaml
+      - evaluation/harbor/**
+      - tools/**
+      - .github/dokimi/**
+      - .github/workflows/dokimi.yml
+  workflow_dispatch:
+    inputs:
+      pr-number:
+        description: Pull request number for this exact approved candidate
+        type: number
+        required: true
+      expected-head:
+        description: Full pull request head commit SHA
+        type: string
+        required: true
+      expected-base:
+        description: Full pull request base commit SHA
+        type: string
+        required: true
+      subject:
+        description: One locally evaluated subject, for example skill/dpnp-quickstart
+        type: string
+        required: true
+      model:
+        description: Explicit full Claude answer model ID (subscription login)
+        type: string
+        required: true
+      judge-model:
+        description: Explicit full independent Claude judge model ID
+        type: string
+        required: true
+      max-calls:
+        description: Approved maximum Claude CLI invocations, including every judge call
+        type: number
+        required: true
+      reps:
+        description: Repetitions per task and arm
+        type: number
+        default: 3
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dokimi-${{ github.event_name }}-${{ github.event.pull_request.number || inputs.pr-number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  checks:
+    if: github.event_name == 'pull_request'
+    uses: vchamarthi/dokimi/.github/workflows/dokimi-pr.yml@88157a4184e842e6ab7f0cfd34844eea6dadccbd
+    with:
+      dokimi-repository: vchamarthi/dokimi
+      dokimi-ref: 88157a4184e842e6ab7f0cfd34844eea6dadccbd
+      mode: check
+      subject-kind: catalog
+      config: .github/dokimi/config.yaml
+      policy: .github/dokimi/policy.yaml
+
+  model:
+    if: github.event_name == 'workflow_dispatch' && github.repository == 'vchamarthi/intel-skills'
+    permissions:
+      contents: read
+      pull-requests: read
+    uses: vchamarthi/dokimi/.github/workflows/dokimi-pr.yml@88157a4184e842e6ab7f0cfd34844eea6dadccbd
+    with:
+      dokimi-repository: vchamarthi/dokimi
+      dokimi-ref: 88157a4184e842e6ab7f0cfd34844eea6dadccbd
+      mode: run
+      subject-kind: catalog
+      config: .github/dokimi/config.yaml
+      policy: .github/dokimi/policy.yaml
+      subject: ${{ inputs.subject }}
+      model: ${{ inputs.model }}
+      provider: claude-cli
+      judge-model: ${{ inputs.judge-model }}
+      judge-provider: claude-cli
+      max-calls: ${{ inputs.max-calls }}
+      reps: ${{ inputs.reps }}
+      harness: arms-runner
+      environment: dokimi-live
+      pr-number: ${{ inputs.pr-number }}
+      expected-head: ${{ inputs.expected-head }}
+      expected-base: ${{ inputs.expected-base }}
+    secrets:
+      claude-code-oauth-token: ${{ secrets.DOKIMI_CLAUDE_CODE_OAUTH_TOKEN }}
+
+  dpnp-oracles:
+    if: github.event_name == 'pull_request'
+    needs: checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Run five native x86 dpnp oracle and verifier pairs
+        env:
+          ORACLE_OUT: ${{ runner.temp }}/dpnp-oracles
+        run: python3 tools/run_dpnp_oracles.py --out "$ORACLE_OUT"
+      - name: Preserve oracle receipts and verifier logs
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: dpnp-oracles-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/dpnp-oracles
+          if-no-files-found: error
+          retention-days: 7

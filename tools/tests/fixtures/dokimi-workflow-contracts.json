@@ -1,0 +1,243 @@
+{
+  "$comment": "Copyright (C) 2026 Intel Corporation; SPDX-License-Identifier: Apache-2.0",
+  "repository": "vchamarthi/dokimi",
+  "commit": "88157a4184e842e6ab7f0cfd34844eea6dadccbd",
+  "workflows": {
+    "dokimi-pr.yml": {
+      "sha256": "9b5742b7154adef4d52b2e79dd0aec89fcb58373f75ca4f20918c486bdae5c51",
+      "inputs": {
+        "dokimi-ref": {
+          "type": "string",
+          "required": true
+        },
+        "dokimi-repository": {
+          "type": "string",
+          "required": false
+        },
+        "mode": {
+          "type": "string",
+          "required": false
+        },
+        "subject-kind": {
+          "type": "string",
+          "required": false
+        },
+        "config": {
+          "type": "string",
+          "required": false
+        },
+        "policy": {
+          "type": "string",
+          "required": false
+        },
+        "pr-number": {
+          "type": "number",
+          "required": false
+        },
+        "expected-head": {
+          "type": "string",
+          "required": false
+        },
+        "expected-base": {
+          "type": "string",
+          "required": false
+        },
+        "environment": {
+          "type": "string",
+          "required": false
+        },
+        "max-usd": {
+          "type": "string",
+          "required": false
+        },
+        "model": {
+          "type": "string",
+          "required": false
+        },
+        "provider": {
+          "type": "string",
+          "required": false
+        },
+        "judge-model": {
+          "type": "string",
+          "required": false
+        },
+        "judge-provider": {
+          "type": "string",
+          "required": false
+        },
+        "reps": {
+          "type": "number",
+          "required": false
+        },
+        "subject": {
+          "type": "string",
+          "required": false
+        },
+        "harness": {
+          "type": "string",
+          "required": false
+        },
+        "max-calls": {
+          "type": "number",
+          "required": false
+        }
+      },
+      "secrets": [
+        "openai-api-key",
+        "anthropic-api-key",
+        "claude-code-oauth-token"
+      ]
+    },
+    "dokimi-publish.yml": {
+      "sha256": "714aade3294f6efc0ba1030ccdb537c29f669edadf07d41057b5416e01463dbc",
+      "inputs": {
+        "source-run": {
+          "type": "string",
+          "required": true
+        },
+        "source-attempt": {
+          "type": "string",
+          "required": true
+        },
+        "source-workflow": {
+          "type": "string",
+          "required": true
+        },
+        "controller-sha": {
+          "type": "string",
+          "required": false
+        },
+        "policy-digest": {
+          "type": "string",
+          "required": false
+        }
+      },
+      "secrets": []
+    },
+    "dokimi-record.yml": {
+      "sha256": "6751072d7973475556479c25e4629b4928291427c1a6dde4a4741114455451a8",
+      "inputs": {
+        "dokimi-ref": {
+          "type": "string",
+          "required": true
+        },
+        "dokimi-repository": {
+          "type": "string",
+          "required": false
+        },
+        "source-run": {
+          "type": "string",
+          "required": true
+        },
+        "source-attempt": {
+          "type": "string",
+          "required": true
+        },
+        "source-workflow": {
+          "type": "string",
+          "required": true
+        },
+        "controller-sha": {
+          "type": "string",
+          "required": true
+        },
+        "policy-digest": {
+          "type": "string",
+          "required": true
+        },
+        "expect-previous": {
+          "type": "string",
+          "required": false
+        },
+        "policy": {
+          "type": "string",
+          "required": true
+        },
+        "commit-author": {
+          "type": "string",
+          "required": false
+        },
+        "commit-email": {
+          "type": "string",
+          "required": false
+        }
+      },
+      "secrets": []
+    },
+    "dokimi-revalidate.yml": {
+      "sha256": "18318512ba0e62ea543c0ec779c9ec148092690c2c01bea145c12fcfbf55ea3c",
+      "inputs": {
+        "dokimi-ref": {
+          "type": "string",
+          "required": true
+        },
+        "dokimi-repository": {
+          "type": "string",
+          "required": false
+        },
+        "config": {
+          "type": "string",
+          "required": false
+        },
+        "policy": {
+          "type": "string",
+          "required": false
+        },
+        "environment": {
+          "type": "string",
+          "required": false
+        },
+        "max-usd": {
+          "type": "string",
+          "required": false
+        },
+        "model": {
+          "type": "string",
+          "required": false
+        },
+        "provider": {
+          "type": "string",
+          "required": false
+        },
+        "judge-model": {
+          "type": "string",
+          "required": false
+        },
+        "judge-provider": {
+          "type": "string",
+          "required": false
+        },
+        "reps": {
+          "type": "number",
+          "required": false
+        },
+        "subject": {
+          "type": "string",
+          "required": false
+        },
+        "harness": {
+          "type": "string",
+          "required": false
+        },
+        "revision": {
+          "type": "string",
+          "required": true
+        },
+        "baseline": {
+          "type": "string",
+          "required": true
+        },
+        "max-calls": {
+          "type": "number",
+          "required": false
+        }
+      },
+      "secrets": [
+        "openai-api-key",
+        "anthropic-api-key",
+        "claude-code-oauth-token"
+      ]
+    }
+  }
+}

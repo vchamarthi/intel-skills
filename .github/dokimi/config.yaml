@@ -1,0 +1,20 @@
+# Copyright (C) 2026 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+schema_version: dokimi_config.v1
+defaults:
+  skills: skills/*
+  suite:
+    beside: '{skill}/evals/**'
+    harbor: evaluation/harbor/tasks/**
+shared:
+  - skills.yaml
+  - evaluation/harbor/suites.json
+  - evaluation/harbor/instructions/**
+  - tools/**
+  - .github/dokimi/**
+  - .github/workflows/dokimi.yml
+plan:
+  reps: 3
+  arms: [none, approved, candidate]
+baseline:
+  store: 'branch:dokimi-baselines'

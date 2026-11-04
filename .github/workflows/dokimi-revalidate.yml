@@ -1,0 +1,63 @@
+# Copyright (C) 2026 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+name: Revalidate Dokimi baseline
+
+on:
+  workflow_dispatch:
+    inputs:
+      revision:
+        description: Full approved content commit SHA to remeasure
+        type: string
+        required: true
+      baseline:
+        description: Baseline JSON path on dokimi-baselines, starting with records/
+        type: string
+        required: true
+      subject:
+        description: Subject matching the baseline, for example skill/onetbb-quickstart
+        type: string
+        required: true
+      model:
+        description: Explicit full Claude answer model ID
+        type: string
+        required: true
+      judge-model:
+        description: Explicit full independent Claude judge model ID
+        type: string
+        required: true
+      max-calls:
+        description: Approved maximum subscription CLI invocations, including every judge call
+        type: number
+        required: true
+      reps:
+        description: Repetitions per task and arm
+        type: number
+        default: 3
+        required: true
+
+permissions: {}
+
+jobs:
+  revalidate:
+    if: github.event_name == 'workflow_dispatch' && github.repository == 'vchamarthi/intel-skills'
+    permissions:
+      contents: read
+    uses: vchamarthi/dokimi/.github/workflows/dokimi-revalidate.yml@88157a4184e842e6ab7f0cfd34844eea6dadccbd
+    with:
+      dokimi-repository: vchamarthi/dokimi
+      dokimi-ref: 88157a4184e842e6ab7f0cfd34844eea6dadccbd
+      config: .github/dokimi/config.yaml
+      policy: .github/dokimi/policy.yaml
+      environment: dokimi-live
+      revision: ${{ inputs.revision }}
+      baseline: ${{ inputs.baseline }}
+      subject: ${{ inputs.subject }}
+      model: ${{ inputs.model }}
+      provider: claude-cli
+      judge-model: ${{ inputs.judge-model }}
+      judge-provider: claude-cli
+      max-calls: ${{ inputs.max-calls }}
+      reps: ${{ inputs.reps }}
+      harness: arms-runner
+    secrets:
+      claude-code-oauth-token: ${{ secrets.DOKIMI_CLAUDE_CODE_OAUTH_TOKEN }}

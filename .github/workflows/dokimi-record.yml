@@ -1,0 +1,47 @@
+# Copyright (C) 2026 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+name: Record approved Dokimi baseline
+
+on:
+  workflow_dispatch:
+    inputs:
+      source-run:
+        description: Exact qualified model evaluation run ID
+        type: string
+        required: true
+      source-attempt:
+        description: Exact qualified source run attempt
+        type: string
+        required: true
+      controller-sha:
+        description: Full approved default-branch controller SHA that produced the source run
+        type: string
+        required: true
+      expect-previous:
+        description: Current baseline record digest, or none for the first record
+        type: string
+        required: true
+        default: none
+
+permissions: {}
+
+jobs:
+  record:
+    if: github.event_name == 'workflow_dispatch' && github.repository == 'vchamarthi/intel-skills'
+    permissions:
+      contents: write
+      actions: read
+      pull-requests: read
+    uses: vchamarthi/dokimi/.github/workflows/dokimi-record.yml@88157a4184e842e6ab7f0cfd34844eea6dadccbd
+    with:
+      dokimi-repository: vchamarthi/dokimi
+      dokimi-ref: 88157a4184e842e6ab7f0cfd34844eea6dadccbd
+      source-run: ${{ inputs.source-run }}
+      source-attempt: ${{ inputs.source-attempt }}
+      source-workflow: .github/workflows/dokimi.yml
+      controller-sha: ${{ inputs.controller-sha }}
+      policy-digest: sha256:c678210e50945577cb4fbe56d8e45f98afaee736f69a652907329495bc42f7ca
+      expect-previous: ${{ inputs.expect-previous }}
+      policy: .github/dokimi/policy.yaml
+      commit-author: vchamarthi
+      commit-email: 123653452+vchamarthi@users.noreply.github.com
