@@ -56,8 +56,8 @@ jobs:
       provider: claude-cli
       judge-model: ${{ inputs.judge-model }}
       judge-provider: claude-cli
-      max-calls: ${{ inputs.max-calls }}
-      reps: ${{ inputs.reps }}
+      max-calls: ${{ fromJSON(inputs.max-calls) }}
+      reps: ${{ fromJSON(inputs.reps) }}
       harness: arms-runner
     secrets:
       DOKIMI_CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.DOKIMI_CLAUDE_CODE_OAUTH_TOKEN }}
