@@ -33,7 +33,11 @@ def run_task(task: Path, out: Path, *, execute: Callable[..., Any] = subprocess.
     task = _safe_task(task)
     output = out / task.name
     logs = output / "logs"
-    logs.mkdir(parents=True, exist_ok=True)
+    verifier_logs = logs / "verifier"
+    verifier_logs.mkdir(parents=True, exist_ok=True)
+    # Container root has no DAC override; bind mounts retain the runner UID.
+    # Only this dedicated output directory needs cross-UID write access.
+    verifier_logs.chmod(0o1777)
     image = f"dokimi-dpnp-oracle:{task.name}"
     started = time.monotonic()
     build = execute(["docker", "build", "--iidfile", str(output / "image-id.txt"), "-t", image,

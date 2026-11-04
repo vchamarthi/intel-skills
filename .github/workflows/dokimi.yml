@@ -61,10 +61,10 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
-    uses: vchamarthi/dokimi/.github/workflows/dokimi-pr.yml@88157a4184e842e6ab7f0cfd34844eea6dadccbd
+    uses: vchamarthi/dokimi/.github/workflows/dokimi-pr.yml@d51db9a340ae68b04a706ba400ab653b0e532ef9
     with:
       dokimi-repository: vchamarthi/dokimi
-      dokimi-ref: 88157a4184e842e6ab7f0cfd34844eea6dadccbd
+      dokimi-ref: d51db9a340ae68b04a706ba400ab653b0e532ef9
       mode: check
       subject-kind: catalog
       config: .github/dokimi/config.yaml
@@ -75,10 +75,10 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
-    uses: vchamarthi/dokimi/.github/workflows/dokimi-pr.yml@88157a4184e842e6ab7f0cfd34844eea6dadccbd
+    uses: vchamarthi/dokimi/.github/workflows/dokimi-pr.yml@d51db9a340ae68b04a706ba400ab653b0e532ef9
     with:
       dokimi-repository: vchamarthi/dokimi
-      dokimi-ref: 88157a4184e842e6ab7f0cfd34844eea6dadccbd
+      dokimi-ref: d51db9a340ae68b04a706ba400ab653b0e532ef9
       mode: run
       subject-kind: catalog
       config: .github/dokimi/config.yaml
@@ -96,7 +96,7 @@ jobs:
       expected-head: ${{ inputs.expected-head }}
       expected-base: ${{ inputs.expected-base }}
     secrets:
-      claude-code-oauth-token: ${{ secrets.DOKIMI_CLAUDE_CODE_OAUTH_TOKEN }}
+      DOKIMI_CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.DOKIMI_CLAUDE_CODE_OAUTH_TOKEN }}
 
   dpnp-oracles:
     if: github.event_name == 'pull_request'

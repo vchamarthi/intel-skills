@@ -41,7 +41,7 @@ class DpnpOracleRunner(unittest.TestCase):
             def docker(args, **_kwargs):
                 commands.append(args)
                 if args[1] == "run":
-                    (root / "out/demo/logs/verifier").mkdir(parents=True)
+                    (root / "out/demo/logs/verifier").mkdir(parents=True, exist_ok=True)
                     (root / "out/demo/logs/verifier/reward.txt").write_text("1\n")
                 return subprocess.CompletedProcess(args, 0, "passed", "")
             result = runner.run_task(task, root / "out", execute=docker)
@@ -50,6 +50,21 @@ class DpnpOracleRunner(unittest.TestCase):
             self.assertEqual(run[run.index("--network") + 1], "none")
             self.assertEqual(run[run.index("--cap-drop") + 1], "ALL")
             self.assertIn("no-new-privileges", run)
+
+    def test_verifier_can_record_reward_when_container_root_is_not_the_mount_owner(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            task = self.task(root)
+            def docker(args, **_kwargs):
+                if args[1] == "run":
+                    directory = root / "out/demo/logs/verifier"
+                    if not directory.is_dir() or not directory.stat().st_mode & 0o002:
+                        return subprocess.CompletedProcess(args, 1, "", "Permission denied: /logs/verifier")
+                    (directory / "reward.txt").write_text("1\n")
+                return subprocess.CompletedProcess(args, 0, "", "")
+            result = runner.run_task(task, root / "out", execute=docker)
+            self.assertTrue(result["passed"])
+            self.assertEqual(result["reward"], 1.0)
 
     def test_symlink_is_rejected_before_docker_gets_host_mounts(self):
         with tempfile.TemporaryDirectory() as raw:

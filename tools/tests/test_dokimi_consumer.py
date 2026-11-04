@@ -50,3 +50,15 @@ class ConsumerWorkflowBoundaries(unittest.TestCase):
         self.assertIn("tools/run_dpnp_oracles.py", job)
         self.assertNotIn("secrets.", job)
         self.assertNotIn(": write", job)
+
+
+class EnvironmentSubscriptionSecret(unittest.TestCase):
+    def test_model_and_revalidation_forward_the_environment_secret_by_its_own_name(self):
+        root = Path(__file__).resolve().parents[2]
+        for name in ("dokimi.yml", "dokimi-revalidate.yml"):
+            text = (root / ".github/workflows" / name).read_text()
+            self.assertIn("environment: dokimi-live", text)
+            self.assertIn("DOKIMI_CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.DOKIMI_CLAUDE_CODE_OAUTH_TOKEN }}", text)
+            self.assertNotIn("claude-code-oauth-token:", text)
+        free = (root / ".github/workflows/dokimi.yml").read_text().split("  model:", 1)[0]
+        self.assertNotIn("secrets:", free)

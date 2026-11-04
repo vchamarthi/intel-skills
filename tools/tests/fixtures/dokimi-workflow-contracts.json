@@ -1,10 +1,10 @@
 {
   "$comment": "Copyright (C) 2026 Intel Corporation; SPDX-License-Identifier: Apache-2.0",
   "repository": "vchamarthi/dokimi",
-  "commit": "88157a4184e842e6ab7f0cfd34844eea6dadccbd",
+  "commit": "d51db9a340ae68b04a706ba400ab653b0e532ef9",
   "workflows": {
     "dokimi-pr.yml": {
-      "sha256": "9b5742b7154adef4d52b2e79dd0aec89fcb58373f75ca4f20918c486bdae5c51",
+      "sha256": "e0724cb2cacd6d43b7e835c3bb2edb90a138ab48cfb2d5086ef674de139f5d9e",
       "inputs": {
         "dokimi-ref": {
           "type": "string",
@@ -86,6 +86,7 @@
       "secrets": [
         "openai-api-key",
         "anthropic-api-key",
+        "DOKIMI_CLAUDE_CODE_OAUTH_TOKEN",
         "claude-code-oauth-token"
       ],
       "job_permissions": {
@@ -190,7 +191,7 @@
       }
     },
     "dokimi-revalidate.yml": {
-      "sha256": "18318512ba0e62ea543c0ec779c9ec148092690c2c01bea145c12fcfbf55ea3c",
+      "sha256": "33a52b0d66c9adca4fc97d227db875942aea648b32fde2bd91267508d7656545",
       "inputs": {
         "dokimi-ref": {
           "type": "string",
@@ -260,6 +261,7 @@
       "secrets": [
         "openai-api-key",
         "anthropic-api-key",
+        "DOKIMI_CLAUDE_CODE_OAUTH_TOKEN",
         "claude-code-oauth-token"
       ],
       "job_permissions": {

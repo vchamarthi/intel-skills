@@ -22,7 +22,7 @@ def mappings(text, field, indent=4):
             continue
         if active and line.strip() and not line.startswith(" " * (indent + 2)):
             break
-        match = re.fullmatch(" " * (indent + 2) + r"([a-z][a-z0-9-]*): (.+)", line)
+        match = re.fullmatch(" " * (indent + 2) + r"([A-Za-z_][A-Za-z0-9_-]*): (.+)", line)
         if active and match:
             values[match[1]] = match[2]
     return values
@@ -105,6 +105,13 @@ class PinnedWorkflowCalls(unittest.TestCase):
         self.assertNotIn("max-usd", text)
         self.assertIn("revision: ${{ inputs.revision }}", text)
         self.assertIn("baseline: ${{ inputs.baseline }}", text)
+
+
+class SecretMappingParser(unittest.TestCase):
+    def test_uppercase_environment_secret_names_are_checked_against_the_pinned_contract(self):
+        text = "    secrets:\n      DOKIMI_CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.DOKIMI_CLAUDE_CODE_OAUTH_TOKEN }}\n"
+        self.assertEqual(mappings(text, "secrets"), {
+            "DOKIMI_CLAUDE_CODE_OAUTH_TOKEN": "${{ secrets.DOKIMI_CLAUDE_CODE_OAUTH_TOKEN }}"})
 
 
 if __name__ == "__main__":
