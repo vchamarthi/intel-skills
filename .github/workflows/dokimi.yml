@@ -61,10 +61,10 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
-    uses: vchamarthi/dokimi/.github/workflows/dokimi-pr.yml@d51db9a340ae68b04a706ba400ab653b0e532ef9
+    uses: vchamarthi/dokimi/.github/workflows/dokimi-pr.yml@bf92c62032e58c5f2bb1b23acb3ec7a547428e1d
     with:
       dokimi-repository: vchamarthi/dokimi
-      dokimi-ref: d51db9a340ae68b04a706ba400ab653b0e532ef9
+      dokimi-ref: bf92c62032e58c5f2bb1b23acb3ec7a547428e1d
       mode: check
       subject-kind: catalog
       config: .github/dokimi/config.yaml
@@ -75,10 +75,10 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
-    uses: vchamarthi/dokimi/.github/workflows/dokimi-pr.yml@d51db9a340ae68b04a706ba400ab653b0e532ef9
+    uses: vchamarthi/dokimi/.github/workflows/dokimi-pr.yml@bf92c62032e58c5f2bb1b23acb3ec7a547428e1d
     with:
       dokimi-repository: vchamarthi/dokimi
-      dokimi-ref: d51db9a340ae68b04a706ba400ab653b0e532ef9
+      dokimi-ref: bf92c62032e58c5f2bb1b23acb3ec7a547428e1d
       mode: run
       subject-kind: catalog
       config: .github/dokimi/config.yaml
