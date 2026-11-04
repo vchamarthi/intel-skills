@@ -34,9 +34,12 @@ def dispatch_types(text):
 
 
 def value_type(value, dispatch):
+    normalized = re.fullmatch(r"\$\{\{ fromJSON\(inputs\.([a-z][a-z0-9-]*)\) \}\}", value)
+    if normalized:
+        return dispatch[normalized[1]]
     direct = re.fullmatch(r"\$\{\{ inputs\.([a-z][a-z0-9-]*) \}\}", value)
     if direct:
-        return dispatch[direct[1]]
+        return "string"
     if value in ("true", "false"):
         return "boolean"
     if re.fullmatch(r"[0-9]+(?:\.[0-9]+)?", value):
@@ -80,6 +83,22 @@ class PinnedWorkflowCalls(unittest.TestCase):
                     if "dokimi-ref" in values:
                         self.assertEqual(values["dokimi-ref"], commit)
 
+    def test_numeric_dispatch_strings_are_normalized_before_number_typed_calls(self):
+        serialized = {"pr-number": "56", "reps": "1", "max-calls": "36"}
+        cases = {"dokimi.yml": "model", "dokimi-revalidate.yml": "revalidate"}
+        for filename, job in cases.items():
+            source = (ROOT / ".github/workflows" / filename).read_text()
+            text = re.split(rf"(?m)^  {job}:\n", source, maxsplit=1)[1]
+            arguments = mappings(text, "with")
+            keys = set(serialized) if job == "model" else {"reps", "max-calls"}
+            for key in keys:
+                with self.subTest(workflow=filename, input=key):
+                    expression = re.fullmatch(r"\$\{\{ fromJSON\(inputs\.([a-z][a-z0-9-]*)\) \}\}", arguments[key])
+                    self.assertIsNotNone(expression, "dispatch strings need explicit fromJSON at typed workflow boundary")
+                    decoded = json.loads(serialized[expression[1]])
+                    self.assertEqual(type(decoded), int)
+                    self.assertEqual(decoded, int(serialized[key]))
+
     def test_record_is_manual_and_scopes_content_write_to_the_record_job(self):
         text = (ROOT / ".github/workflows/dokimi-record.yml").read_text()
         self.assertIn("  workflow_dispatch:", text)
@@ -100,7 +119,7 @@ class PinnedWorkflowCalls(unittest.TestCase):
         self.assertNotIn(": write", text)
         self.assertIn("provider: claude-cli", text)
         self.assertIn("judge-provider: claude-cli", text)
-        self.assertIn("max-calls: ${{ inputs.max-calls }}", text)
+        self.assertIn("max-calls: ${{ fromJSON(inputs.max-calls) }}", text)
         self.assertNotIn("api-key", text)
         self.assertNotIn("max-usd", text)
         self.assertIn("revision: ${{ inputs.revision }}", text)
