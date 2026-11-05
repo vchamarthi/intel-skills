@@ -22,4 +22,4 @@ jobs:
       source-attempt: ${{ format('{0}', github.event.workflow_run.run_attempt) }}
       source-workflow: .github/workflows/dokimi.yml
       controller-sha: ${{ github.event.workflow_run.event == 'workflow_dispatch' && github.sha || '' }}
-      policy-digest: sha256:c678210e50945577cb4fbe56d8e45f98afaee736f69a652907329495bc42f7ca
+      policy-digest: ${{ vars.DOKIMI_POLICY_DIGEST }}

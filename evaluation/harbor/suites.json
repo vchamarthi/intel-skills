@@ -972,68 +972,6 @@
       "evaluated_here": false,
       "capabilities": [],
       "tasks": []
-    },
-    {
-      "skill": "ai-inference-deploy",
-      "target_task_count": 5,
-      "capabilities": [
-        {
-          "id": "routing-decision",
-          "class": "selection",
-          "description": "Choose the catalog workflow for a supported inference request."
-        },
-        {
-          "id": "scope-boundary",
-          "class": "correctness",
-          "description": "Decline unsupported requests instead of inventing a supported path."
-        }
-      ],
-      "tasks": [
-        {
-          "name": "ai-inference-deploy-routing",
-          "status": "implemented",
-          "role": "smoke",
-          "calibration": "uncalibrated",
-          "track": "executable",
-          "environment": "hosted-cpu",
-          "covers": [
-            "routing-decision",
-            "scope-boundary"
-          ]
-        }
-      ],
-      "note": "One existing task is attributed here; the portfolio remains incomplete and uncalibrated. This declaration adds no runtime evidence or validated status."
-    },
-    {
-      "skill": "openvino-gpu-run",
-      "target_task_count": 5,
-      "capabilities": [
-        {
-          "id": "launch-correctness",
-          "class": "correctness",
-          "description": "Construct an OVMS launch command with the required endpoint and model parameters."
-        },
-        {
-          "id": "device-pinning",
-          "class": "selection",
-          "description": "Explicitly target the Intel GPU rather than silently selecting the CPU."
-        }
-      ],
-      "tasks": [
-        {
-          "name": "openvino-gpu-run-launch",
-          "status": "implemented",
-          "role": "smoke",
-          "calibration": "uncalibrated",
-          "track": "executable",
-          "environment": "hosted-cpu",
-          "covers": [
-            "launch-correctness",
-            "device-pinning"
-          ]
-        }
-      ],
-      "note": "One existing task is attributed here; the portfolio remains incomplete and uncalibrated. This declaration adds no runtime evidence or validated status."
     }
   ]
 }

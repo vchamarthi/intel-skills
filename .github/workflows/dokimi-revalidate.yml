@@ -14,32 +14,43 @@ on:
         type: string
         required: true
       subject:
-        description: Subject matching the baseline, for example skill/onetbb-quickstart
+        description: Subject matching the baseline
         type: string
         required: true
+      provider:
+        description: Answer provider supported by the pinned engine
+        type: string
+        required: true
+      judge-provider:
+        description: Independent judge provider
+        type: string
+        required: true
+      max-usd:
+        description: Monetary budget for API providers; unused for subscriptions
+        type: string
+        required: false
       model:
-        description: Explicit full Claude answer model ID
+        description: Answer model ID
         type: string
         required: true
       judge-model:
-        description: Explicit full independent Claude judge model ID
+        description: Independent judge model ID
         type: string
         required: true
       max-calls:
-        description: Approved maximum subscription CLI invocations, including every judge call
+        description: Maximum subscription model calls, including judge calls
         type: number
-        required: true
+        required: false
       reps:
         description: Repetitions per task and arm
         type: number
-        default: 3
         required: true
 
 permissions: {}
 
 jobs:
   revalidate:
-    if: github.event_name == 'workflow_dispatch' && github.repository == 'vchamarthi/intel-skills'
+    if: github.event_name == 'workflow_dispatch'
     permissions:
       contents: read
     uses: vchamarthi/dokimi/.github/workflows/dokimi-revalidate.yml@3b63dcd14c13dd34422d8bfabbc34d4c6e3ba499
@@ -47,17 +58,20 @@ jobs:
       dokimi-repository: vchamarthi/dokimi
       dokimi-ref: 3b63dcd14c13dd34422d8bfabbc34d4c6e3ba499
       config: .github/dokimi/config.yaml
-      policy: .github/dokimi/policy.yaml
-      environment: dokimi-live
+      policy: ${{ vars.DOKIMI_POLICY }}
+      environment: ${{ vars.DOKIMI_ENVIRONMENT }}
       revision: ${{ inputs.revision }}
       baseline: ${{ inputs.baseline }}
       subject: ${{ inputs.subject }}
       model: ${{ inputs.model }}
-      provider: claude-cli
+      provider: ${{ inputs.provider }}
       judge-model: ${{ inputs.judge-model }}
-      judge-provider: claude-cli
-      max-calls: ${{ fromJSON(inputs.max-calls) }}
+      judge-provider: ${{ inputs.judge-provider }}
+      max-usd: ${{ inputs.max-usd }}
+      max-calls: ${{ fromJSON(inputs.max-calls || '0') }}
       reps: ${{ fromJSON(inputs.reps) }}
       harness: arms-runner
     secrets:
-      DOKIMI_CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.DOKIMI_CLAUDE_CODE_OAUTH_TOKEN }}
+      openai-api-key: ${{ (inputs.provider == 'openai' || inputs.judge-provider == 'openai') && secrets.OPENAI_API_KEY || '' }}
+      anthropic-api-key: ${{ (inputs.provider == 'anthropic' || inputs.judge-provider == 'anthropic') && secrets.ANTHROPIC_API_KEY || '' }}
+      DOKIMI_CLAUDE_CODE_OAUTH_TOKEN: ${{ (inputs.provider == 'claude-cli' || inputs.judge-provider == 'claude-cli') && secrets.DOKIMI_CLAUDE_CODE_OAUTH_TOKEN || '' }}

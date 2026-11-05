@@ -34,7 +34,7 @@ def dispatch_types(text):
 
 
 def value_type(value, dispatch):
-    normalized = re.fullmatch(r"\$\{\{ fromJSON\(inputs\.([a-z][a-z0-9-]*)\) \}\}", value)
+    normalized = re.fullmatch(r"\$\{\{ fromJSON\(inputs\.([a-z][a-z0-9-]*)(?: \|\| '0')?\) \}\}", value)
     if normalized:
         return dispatch[normalized[1]]
     direct = re.fullmatch(r"\$\{\{ inputs\.([a-z][a-z0-9-]*) \}\}", value)
@@ -84,7 +84,7 @@ class PinnedWorkflowCalls(unittest.TestCase):
                         self.assertEqual(values["dokimi-ref"], commit)
 
     def test_numeric_dispatch_strings_are_normalized_before_number_typed_calls(self):
-        serialized = {"pr-number": "56", "reps": "1", "max-calls": "36"}
+        serialized = {"pr-number": "7", "reps": "2", "max-calls": "90"}
         cases = {"dokimi.yml": "model", "dokimi-revalidate.yml": "revalidate"}
         for filename, job in cases.items():
             source = (ROOT / ".github/workflows" / filename).read_text()
@@ -93,7 +93,7 @@ class PinnedWorkflowCalls(unittest.TestCase):
             keys = set(serialized) if job == "model" else {"reps", "max-calls"}
             for key in keys:
                 with self.subTest(workflow=filename, input=key):
-                    expression = re.fullmatch(r"\$\{\{ fromJSON\(inputs\.([a-z][a-z0-9-]*)\) \}\}", arguments[key])
+                    expression = re.fullmatch(r"\$\{\{ fromJSON\(inputs\.([a-z][a-z0-9-]*)(?: \|\| '0')?\) \}\}", arguments[key])
                     self.assertIsNotNone(expression, "dispatch strings need explicit fromJSON at typed workflow boundary")
                     decoded = json.loads(serialized[expression[1]])
                     self.assertEqual(type(decoded), int)
@@ -106,22 +106,21 @@ class PinnedWorkflowCalls(unittest.TestCase):
         self.assertNotIn("  schedule:", text)
         self.assertIn("permissions: {}", text)
         self.assertEqual(text.count("contents: write"), 1)
-        self.assertIn("commit-author: vchamarthi", text)
-        self.assertIn("commit-email: 123653452+vchamarthi@users.noreply.github.com", text)
+        self.assertIn("commit-author: ${{ github.actor }}", text)
+        self.assertIn("github.actor_id, github.actor", text)
         self.assertIn("source-workflow: .github/workflows/dokimi.yml", text)
         self.assertIn("expect-previous: ${{ inputs.expect-previous }}", text)
         self.assertNotIn("secrets:", text)
 
-    def test_revalidation_is_manual_subscription_only_and_cannot_write(self):
+    def test_revalidation_is_manual_configurable_and_cannot_write(self):
         text = (ROOT / ".github/workflows/dokimi-revalidate.yml").read_text()
         self.assertIn("  workflow_dispatch:", text)
         self.assertNotIn("  schedule:", text)
         self.assertNotIn(": write", text)
-        self.assertIn("provider: claude-cli", text)
-        self.assertIn("judge-provider: claude-cli", text)
-        self.assertIn("max-calls: ${{ fromJSON(inputs.max-calls) }}", text)
-        self.assertNotIn("api-key", text)
-        self.assertNotIn("max-usd", text)
+        self.assertIn("provider: ${{ inputs.provider }}", text)
+        self.assertIn("judge-provider: ${{ inputs.judge-provider }}", text)
+        self.assertIn("max-calls: ${{ fromJSON(inputs.max-calls || '0') }}", text)
+        self.assertIn("max-usd: ${{ inputs.max-usd }}", text)
         self.assertIn("revision: ${{ inputs.revision }}", text)
         self.assertIn("baseline: ${{ inputs.baseline }}", text)
 

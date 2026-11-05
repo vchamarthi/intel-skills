@@ -27,7 +27,7 @@ permissions: {}
 
 jobs:
   record:
-    if: github.event_name == 'workflow_dispatch' && github.repository == 'vchamarthi/intel-skills'
+    if: github.event_name == 'workflow_dispatch'
     permissions:
       contents: write
       actions: read
@@ -40,8 +40,8 @@ jobs:
       source-attempt: ${{ inputs.source-attempt }}
       source-workflow: .github/workflows/dokimi.yml
       controller-sha: ${{ inputs.controller-sha }}
-      policy-digest: sha256:c678210e50945577cb4fbe56d8e45f98afaee736f69a652907329495bc42f7ca
+      policy-digest: ${{ vars.DOKIMI_POLICY_DIGEST }}
       expect-previous: ${{ inputs.expect-previous }}
-      policy: .github/dokimi/policy.yaml
-      commit-author: vchamarthi
-      commit-email: 123653452+vchamarthi@users.noreply.github.com
+      policy: ${{ vars.DOKIMI_POLICY }}
+      commit-author: ${{ github.actor }}
+      commit-email: ${{ format('{0}+{1}@users.noreply.github.com', github.actor_id, github.actor) }}

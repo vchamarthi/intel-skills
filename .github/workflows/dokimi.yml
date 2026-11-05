@@ -11,7 +11,7 @@ on:
       - evaluation/harbor/**
       - tools/**
       - .github/dokimi/**
-      - .github/workflows/dokimi.yml
+      - .github/workflows/dokimi*.yml
   workflow_dispatch:
     inputs:
       pr-number:
@@ -27,25 +27,36 @@ on:
         type: string
         required: true
       subject:
-        description: One locally evaluated subject, for example skill/dpnp-quickstart
+        description: One locally evaluated subject, using its catalog ID
         type: string
         required: true
+      provider:
+        description: Answer provider supported by the pinned engine
+        type: string
+        required: true
+      judge-provider:
+        description: Independent judge provider
+        type: string
+        required: true
+      max-usd:
+        description: Monetary budget for API providers; unused for subscriptions
+        type: string
+        required: false
       model:
-        description: Explicit full Claude answer model ID (subscription login)
+        description: Answer model ID
         type: string
         required: true
       judge-model:
-        description: Explicit full independent Claude judge model ID
+        description: Independent judge model ID
         type: string
         required: true
       max-calls:
-        description: Approved maximum Claude CLI invocations, including every judge call
+        description: Maximum subscription model calls, including judge calls
         type: number
-        required: true
+        required: false
       reps:
         description: Repetitions per task and arm
         type: number
-        default: 3
         required: true
 
 permissions:
@@ -68,10 +79,9 @@ jobs:
       mode: check
       subject-kind: catalog
       config: .github/dokimi/config.yaml
-      policy: .github/dokimi/policy.yaml
 
   model:
-    if: github.event_name == 'workflow_dispatch' && github.repository == 'vchamarthi/intel-skills'
+    if: github.event_name == 'workflow_dispatch'
     permissions:
       contents: read
       pull-requests: read
@@ -82,45 +92,21 @@ jobs:
       mode: run
       subject-kind: catalog
       config: .github/dokimi/config.yaml
-      policy: .github/dokimi/policy.yaml
       subject: ${{ inputs.subject }}
       model: ${{ inputs.model }}
-      provider: claude-cli
+      provider: ${{ inputs.provider }}
       judge-model: ${{ inputs.judge-model }}
-      judge-provider: claude-cli
-      max-calls: ${{ fromJSON(inputs.max-calls) }}
+      judge-provider: ${{ inputs.judge-provider }}
+      max-calls: ${{ fromJSON(inputs.max-calls || '0') }}
       reps: ${{ fromJSON(inputs.reps) }}
       harness: arms-runner
-      environment: dokimi-live
+      environment: ${{ vars.DOKIMI_ENVIRONMENT }}
+      policy: ${{ vars.DOKIMI_POLICY }}
+      max-usd: ${{ inputs.max-usd }}
       pr-number: ${{ fromJSON(inputs.pr-number) }}
       expected-head: ${{ inputs.expected-head }}
       expected-base: ${{ inputs.expected-base }}
     secrets:
-      DOKIMI_CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.DOKIMI_CLAUDE_CODE_OAUTH_TOKEN }}
-
-  dpnp-oracles:
-    if: github.event_name == 'pull_request'
-    needs: checks
-    runs-on: ubuntu-24.04
-    timeout-minutes: 45
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          persist-credentials: false
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
-        with:
-          python-version: '3.12'
-      - name: Run five native x86 dpnp oracle and verifier pairs
-        env:
-          ORACLE_OUT: ${{ runner.temp }}/dpnp-oracles
-        run: python3 tools/run_dpnp_oracles.py --out "$ORACLE_OUT"
-      - name: Preserve oracle receipts and verifier logs
-        if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        with:
-          name: dpnp-oracles-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/dpnp-oracles
-          if-no-files-found: error
-          retention-days: 7
+      openai-api-key: ${{ (inputs.provider == 'openai' || inputs.judge-provider == 'openai') && secrets.OPENAI_API_KEY || '' }}
+      anthropic-api-key: ${{ (inputs.provider == 'anthropic' || inputs.judge-provider == 'anthropic') && secrets.ANTHROPIC_API_KEY || '' }}
+      DOKIMI_CLAUDE_CODE_OAUTH_TOKEN: ${{ (inputs.provider == 'claude-cli' || inputs.judge-provider == 'claude-cli') && secrets.DOKIMI_CLAUDE_CODE_OAUTH_TOKEN || '' }}

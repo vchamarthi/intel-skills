@@ -12,9 +12,6 @@ shared:
   - evaluation/harbor/instructions/**
   - tools/**
   - .github/dokimi/**
-  - .github/workflows/dokimi.yml
-plan:
-  reps: 3
-  arms: [none, approved, candidate]
+  - .github/workflows/dokimi*.yml
 baseline:
   store: 'branch:dokimi-baselines'

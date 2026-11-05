@@ -4,7 +4,10 @@ schema_version = "1.3"
 # The task -> skill link is this field, not the directory path: `harbor run` needs
 # a single discovery root, so tasks cannot nest under skills/.
 skill = "ai-inference-deploy"
-# Capability IDs are checked against the owning suite in suites.json.
+# Named here by the author; no suite claims them yet, so any non-empty list passes and
+# a maintainer reconciles the names when the suite is written. The two are the halves
+# of what a router is for: sending a supported request to the right place, and
+# refusing an unsupported one instead of improvising it.
 covers = ["routing-decision", "scope-boundary"]
 # gpus.json provenance: endpoint/throughput and gguf were captured on Arc Pro B70 / B50
 # hosts; windows-request is a Windows 11 Arc B390 run reported in review (memory null:
