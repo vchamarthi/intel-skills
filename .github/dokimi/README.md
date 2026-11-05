@@ -27,8 +27,9 @@ pull request does not immediately authorize hosted model execution.
 
 For existing skills, the base revision supplies every primary evaluation case,
 expected answer, assertion, and executable-task verifier. The model receives no
-skill, the approved skill, or the candidate skill over that same suite. New head
-cases are exploratory and do not replace the approved suite. Imported skills
+skill, the approved skill, or the candidate skill over that same suite. Head-added
+cases are inventoried but not executed by the CI gate; approve and revalidate the
+suite separately. Imported skills
 marked `evaluated_here: false` receive checks only. A missing supported suite is
 reported as `no_tasks` rather than receiving a runtime pass.
 
