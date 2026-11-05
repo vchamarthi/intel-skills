@@ -15,9 +15,8 @@ jobs:
   publish:
     permissions:
       actions: read
-      pull-requests: read
-      issues: write
-    uses: vchamarthi/dokimi/.github/workflows/dokimi-publish.yml@d0ffd813a1f4c51f77f3c47034354ff7a4e0a171
+      pull-requests: write
+    uses: vchamarthi/dokimi/.github/workflows/dokimi-publish.yml@3b63dcd14c13dd34422d8bfabbc34d4c6e3ba499
     with:
       source-run: ${{ format('{0}', github.event.workflow_run.id) }}
       source-attempt: ${{ format('{0}', github.event.workflow_run.run_attempt) }}

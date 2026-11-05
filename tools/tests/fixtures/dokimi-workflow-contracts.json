@@ -1,7 +1,7 @@
 {
   "$comment": "Copyright (C) 2026 Intel Corporation; SPDX-License-Identifier: Apache-2.0",
   "repository": "vchamarthi/dokimi",
-  "commit": "d0ffd813a1f4c51f77f3c47034354ff7a4e0a171",
+  "commit": "3b63dcd14c13dd34422d8bfabbc34d4c6e3ba499",
   "workflows": {
     "dokimi-pr.yml": {
       "sha256": "d701055e2c7a561d5002bbf03f1d83aa097ff81ad43ff1c07c28e126f0634736",
@@ -101,7 +101,7 @@
       }
     },
     "dokimi-publish.yml": {
-      "sha256": "98fb453bbebe8d4476c6fd80554e2e0f8e762fa9bf1f17b954a3c0ea243de298",
+      "sha256": "1ae8ab2eae5ae50261f81d9d2833b0364b6a4ccd9d90e700e0738dc2c4a9653c",
       "inputs": {
         "source-run": {
           "type": "string",
@@ -128,8 +128,7 @@
       "job_permissions": {
         "publish": {
           "actions": "read",
-          "pull-requests": "read",
-          "issues": "write"
+          "pull-requests": "write"
         }
       }
     },
