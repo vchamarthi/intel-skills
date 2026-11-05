@@ -1,0 +1,63 @@
+# Copyright (C) 2026 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+name: Dokimi non-model scans
+
+on:
+  pull_request:
+    paths:
+      - skills/**
+      - skills.yaml
+      - evaluation/harbor/**
+      - tools/dokimi_scan.py
+      - tools/tests/test_dokimi_scan.py
+      - .github/dokimi/**
+      - .github/workflows/dokimi.yml
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scans:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          path: catalog
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: intel/dokimi
+          ref: 272d0b2e7dafc2158e058a2f24ca29ccf3e64e08
+          path: engine
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Install upstream Dokimi
+        run: python -m pip install --disable-pip-version-check ./engine/dokimi
+      - name: Scan catalog and existing routing queries
+        env:
+          ROOT: ${{ github.workspace }}/catalog
+          OUT: ${{ runner.temp }}/dokimi-scans
+        run: python -I "$ROOT/tools/dokimi_scan.py" --root "$ROOT" --out "$OUT"
+      - name: Publish scan summary
+        if: always()
+        env:
+          REPORT: ${{ runner.temp }}/dokimi-scans/report.md
+        run: |
+          if [ -f "$REPORT" ]; then cat "$REPORT" >> "$GITHUB_STEP_SUMMARY"; fi
+      - name: Preserve scan reports and logs
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: dokimi-scans-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/dokimi-scans
+          if-no-files-found: error
