@@ -1,0 +1,281 @@
+{
+  "baseline_id": "sha256:7049c689a6a922d7f1e65a777ab8786e6948c02d4650cf916239a36b204fa86e",
+  "bundle": {
+    "budget_stopped": false,
+    "identity": {
+      "content_digest": "sha256:788ea6308af362f71b50f699f3aa6fccf4a61e1ce9cd75d36313daa559268389",
+      "framework_digest": "sha256:106cb1d18661826696f02a701e3effc24d60037434c4d55c0d2be76ecaa0ba43",
+      "grader_digest": "sha256:6c9f8e63f7340fd27a4d1456ab81084e448136506557ce915f04e201d4ded6ba",
+      "harness": "arms-runner",
+      "kind": "skill",
+      "model": "claude-cli/claude-sonnet-5-5",
+      "subject": "skill/ci-integration-canary",
+      "suite_digest": "sha256:34256e71956ab5453fe5d03ae5f85036786bfdea41c2a2c84d735cf360dc51f9"
+    },
+    "mode": "live",
+    "observations": [
+      {
+        "agent_calls": 3,
+        "cell_id": "c-988fc7065bdb9ade",
+        "cost_usd": null,
+        "discovered": null,
+        "elapsed_sec": 7.881067672,
+        "score": 0
+      },
+      {
+        "agent_calls": 3,
+        "cell_id": "c-93594adc23ebff4c",
+        "cost_usd": null,
+        "discovered": null,
+        "elapsed_sec": 6.185999281000008,
+        "score": 0
+      },
+      {
+        "agent_calls": 3,
+        "cell_id": "c-7ae273cb59e7fe71",
+        "cost_usd": null,
+        "discovered": null,
+        "elapsed_sec": 5.587913396999994,
+        "score": 0.25
+      },
+      {
+        "agent_calls": 3,
+        "cell_id": "c-a4e340580d53d128",
+        "cost_usd": null,
+        "discovered": null,
+        "elapsed_sec": 6.445220024000008,
+        "score": 1
+      },
+      {
+        "agent_calls": 3,
+        "cell_id": "c-ec07c88ef0c12ff7",
+        "cost_usd": null,
+        "discovered": null,
+        "elapsed_sec": 5.497031540999998,
+        "score": 1
+      },
+      {
+        "agent_calls": 3,
+        "cell_id": "c-7d65d40d7c12189b",
+        "cost_usd": null,
+        "discovered": null,
+        "elapsed_sec": 5.99169526,
+        "score": 1
+      },
+      {
+        "agent_calls": 3,
+        "cell_id": "c-fd712f5ce0fcec1a",
+        "cost_usd": null,
+        "discovered": null,
+        "elapsed_sec": 5.446589680000002,
+        "score": 1
+      },
+      {
+        "agent_calls": 3,
+        "cell_id": "c-0e9eeeea5bcd7646",
+        "cost_usd": null,
+        "discovered": null,
+        "elapsed_sec": 5.9608945439999985,
+        "score": 1
+      },
+      {
+        "agent_calls": 3,
+        "cell_id": "c-a032174f0d6b492c",
+        "cost_usd": null,
+        "discovered": null,
+        "elapsed_sec": 5.725848033000005,
+        "score": 1
+      }
+    ],
+    "plan": {
+      "budget": {
+        "agent_calls": 36,
+        "cells": 9,
+        "cost_usd": null
+      },
+      "cells": [
+        {
+          "arm": "none",
+          "cell_id": "c-988fc7065bdb9ade",
+          "model": "claude-cli/claude-sonnet-5-5",
+          "rep": 1,
+          "task": "skill/ci-integration-canary::alpha"
+        },
+        {
+          "arm": "none",
+          "cell_id": "c-93594adc23ebff4c",
+          "model": "claude-cli/claude-sonnet-5-5",
+          "rep": 1,
+          "task": "skill/ci-integration-canary::beta"
+        },
+        {
+          "arm": "none",
+          "cell_id": "c-7ae273cb59e7fe71",
+          "model": "claude-cli/claude-sonnet-5-5",
+          "rep": 1,
+          "task": "skill/ci-integration-canary::gamma"
+        },
+        {
+          "arm": "approved",
+          "cell_id": "c-a4e340580d53d128",
+          "model": "claude-cli/claude-sonnet-5-5",
+          "rep": 1,
+          "task": "skill/ci-integration-canary::alpha"
+        },
+        {
+          "arm": "approved",
+          "cell_id": "c-ec07c88ef0c12ff7",
+          "model": "claude-cli/claude-sonnet-5-5",
+          "rep": 1,
+          "task": "skill/ci-integration-canary::beta"
+        },
+        {
+          "arm": "approved",
+          "cell_id": "c-7d65d40d7c12189b",
+          "model": "claude-cli/claude-sonnet-5-5",
+          "rep": 1,
+          "task": "skill/ci-integration-canary::gamma"
+        },
+        {
+          "arm": "candidate",
+          "cell_id": "c-fd712f5ce0fcec1a",
+          "model": "claude-cli/claude-sonnet-5-5",
+          "rep": 1,
+          "task": "skill/ci-integration-canary::alpha"
+        },
+        {
+          "arm": "candidate",
+          "cell_id": "c-0e9eeeea5bcd7646",
+          "model": "claude-cli/claude-sonnet-5-5",
+          "rep": 1,
+          "task": "skill/ci-integration-canary::beta"
+        },
+        {
+          "arm": "candidate",
+          "cell_id": "c-a032174f0d6b492c",
+          "model": "claude-cli/claude-sonnet-5-5",
+          "rep": 1,
+          "task": "skill/ci-integration-canary::gamma"
+        }
+      ],
+      "grader": {
+        "digest": "sha256:6c9f8e63f7340fd27a4d1456ab81084e448136506557ce915f04e201d4ded6ba",
+        "id": "catalog-reference-checks"
+      },
+      "harnesses": [
+        "arms-runner"
+      ],
+      "models": [
+        "claude-cli/claude-sonnet-5-5"
+      ],
+      "schema_version": "plan.v1",
+      "subjects": [
+        {
+          "fingerprint": "sha256:788ea6308af362f71b50f699f3aa6fccf4a61e1ce9cd75d36313daa559268389",
+          "id": "skill/ci-integration-canary",
+          "kind": "skill",
+          "sha": "d84427ab0150d80fbe504ee3c7bba0410e837e3c"
+        }
+      ],
+      "suites": [
+        {
+          "hash": "sha256:34256e71956ab5453fe5d03ae5f85036786bfdea41c2a2c84d735cf360dc51f9",
+          "id": "skill/ci-integration-canary:base",
+          "reasons": [
+            "approved suite held fixed across every treatment arm"
+          ]
+        }
+      ],
+      "varied_variable": "skill-content"
+    },
+    "policy_digest": "sha256:c678210e50945577cb4fbe56d8e45f98afaee736f69a652907329495bc42f7ca",
+    "result": {
+      "cells": [
+        {
+          "cell_id": "c-988fc7065bdb9ade",
+          "detail": "answer-only reference checks; no coding task executed",
+          "model": "claude-cli/claude-sonnet-5-5",
+          "status": "fail"
+        },
+        {
+          "cell_id": "c-93594adc23ebff4c",
+          "detail": "answer-only reference checks; no coding task executed",
+          "model": "claude-cli/claude-sonnet-5-5",
+          "status": "fail"
+        },
+        {
+          "cell_id": "c-7ae273cb59e7fe71",
+          "detail": "answer-only reference checks; no coding task executed",
+          "model": "claude-cli/claude-sonnet-5-5",
+          "status": "fail"
+        },
+        {
+          "cell_id": "c-a4e340580d53d128",
+          "detail": "answer-only reference checks; no coding task executed",
+          "model": "claude-cli/claude-sonnet-5-5",
+          "status": "pass"
+        },
+        {
+          "cell_id": "c-ec07c88ef0c12ff7",
+          "detail": "answer-only reference checks; no coding task executed",
+          "model": "claude-cli/claude-sonnet-5-5",
+          "status": "pass"
+        },
+        {
+          "cell_id": "c-7d65d40d7c12189b",
+          "detail": "answer-only reference checks; no coding task executed",
+          "model": "claude-cli/claude-sonnet-5-5",
+          "status": "pass"
+        },
+        {
+          "cell_id": "c-fd712f5ce0fcec1a",
+          "detail": "answer-only reference checks; no coding task executed",
+          "model": "claude-cli/claude-sonnet-5-5",
+          "status": "pass"
+        },
+        {
+          "cell_id": "c-0e9eeeea5bcd7646",
+          "detail": "answer-only reference checks; no coding task executed",
+          "model": "claude-cli/claude-sonnet-5-5",
+          "status": "pass"
+        },
+        {
+          "cell_id": "c-a032174f0d6b492c",
+          "detail": "answer-only reference checks; no coding task executed",
+          "model": "claude-cli/claude-sonnet-5-5",
+          "status": "pass"
+        }
+      ],
+      "plan_digest": "sha256:e85314d6e8de979e7cba3d72e7434039d3c0814017dfcde509b496b53e635fd4",
+      "schema_version": "result.v1"
+    },
+    "runtime": {
+      "billing": "subscription",
+      "cli_version": "2.1.306 (Claude Code)",
+      "judge_model": "claude-haiku-5-5",
+      "judge_provider": "claude-cli",
+      "provider": "claude-cli",
+      "reps": 1,
+      "requested_model": "claude-sonnet-5-5",
+      "transport": "claude-cli"
+    },
+    "schema_version": "ci_run.v1",
+    "source": {
+      "base_sha": "037a22cf9554ba86aaada04754739088286167e3",
+      "checked_sha": "d84427ab0150d80fbe504ee3c7bba0410e837e3c",
+      "head_sha": "d84427ab0150d80fbe504ee3c7bba0410e837e3c",
+      "repository": "vchamarthi/intel-skills",
+      "run_attempt": 1,
+      "run_id": 41942628710
+    }
+  },
+  "policy": {
+    "max_regression": 0.05,
+    "min_lift": 0.0,
+    "min_tasks": 3,
+    "require_discovery": false,
+    "require_lift": true,
+    "schema_version": "ci_policy.v1"
+  },
+  "schema_version": "ci_baseline.v1"
+}
