@@ -32,10 +32,10 @@ jobs:
       contents: write
       actions: read
       pull-requests: read
-    uses: vchamarthi/dokimi/.github/workflows/dokimi-record.yml@d0ffd813a1f4c51f77f3c47034354ff7a4e0a171
+    uses: vchamarthi/dokimi/.github/workflows/dokimi-record.yml@3b63dcd14c13dd34422d8bfabbc34d4c6e3ba499
     with:
       dokimi-repository: vchamarthi/dokimi
-      dokimi-ref: d0ffd813a1f4c51f77f3c47034354ff7a4e0a171
+      dokimi-ref: 3b63dcd14c13dd34422d8bfabbc34d4c6e3ba499
       source-run: ${{ inputs.source-run }}
       source-attempt: ${{ inputs.source-attempt }}
       source-workflow: .github/workflows/dokimi.yml
