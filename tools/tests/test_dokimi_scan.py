@@ -50,6 +50,17 @@ class QueryInputs(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     scanner.collect_queries(root)
 
+    def test_linked_skill_roots_are_refused_before_reading_external_cases(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root, outside = Path(tmp) / 'source', Path(tmp) / 'external'
+            root.mkdir()
+            (outside / 'example' / 'evals').mkdir(parents=True)
+            (outside / 'example' / 'evals' / 'evals.json').write_text(
+                json.dumps({'evals': [{'prompt': 'external data'}]}))
+            (root / 'skills').symlink_to(outside, target_is_directory=True)
+            with self.assertRaises(ValueError):
+                scanner.collect_queries(root)
+
     def test_no_cases_does_not_invent_queries(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

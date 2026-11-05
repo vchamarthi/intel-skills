@@ -15,6 +15,8 @@ import sys
 
 def collect_queries(root):
     queries, sources = {}, {}
+    if (root / 'skills').is_symlink():
+        raise ValueError('linked skills root')
     for directory in sorted((root / 'skills').iterdir()):
         if directory.is_symlink():
             raise ValueError(f'linked skill directory: {directory.name}')
